@@ -1,7 +1,8 @@
-use std::collections::HashSet;
-use cgmath::Point2;
+use alloc::vec::Vec;
+use alloc::collections::BTreeSet as HashSet;
 
-use crate::polyline::GRID_SIZE;
+use cgmath::Point2;
+use cgmath::num_traits::real::Real; // round
 
 pub(crate) type CellSet = HashSet<(i32, i32)>;
 
@@ -33,7 +34,7 @@ impl Cntr {
 			}
 		}
 
-		let n = self.n_size as i32; // GRID_SIZE as i32;
+		let n = self.n_size as i32;
 		let min_x = self.points.iter().map(|a| a.x).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
 		let min_y = self.points.iter().map(|a| a.y).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
 		let max_x = self.points.iter().map(|a| a.x).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();

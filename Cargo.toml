@@ -4,25 +4,17 @@ version = "0.1.0"
 authors = ["mish"]
 edition = "2018"
 
+[build]
+target = "wasm32-unknown-unknown"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-
-cgmath = "0.16.1"
-tri-mesh = "0.5.0"
-rust-3d = "0.34.0"
-obj-rs = "0.6"
-rust-crypto = "0.2"
-
-ndarray = { version = "0.13" } #, features = ["blas"] }     # "rayon" - parallel iterators
-# lapacke = { version = "0.2.0" }
-
-peroxide = { version = "0.27" }
-
-# ndarray-linalg = { version = "0.12", features = ["openblas"] }
-# openblas-src = { version = "0.9", default-features = false, features = ["cblas", "lapacke", "system"] }
-
-
-# blas-src = { version = "0.6", default-features = false, features = ["openblas"] }
-# lapack-src = { version = "0.6", features = ["openblas"] }
-
+libm = { version = "0.2", default-features = false }
+cgmath = { version = "0.18", git = "https://github.com/3Dpass/cgmath", branch = "master", default-features = false }
+tri-mesh = { version = "0.5.0", git = "https://github.com/3Dpass/tri-mesh", branch = "dev", default-features = false }
+obj-rs = { version = "0.7", git = "https://github.com/3Dpass/obj-rs", branch = "dev", default-features = false }
+ndarray = { version = "0.15", git = "https://github.com/3Dpass/ndarray", branch = "dev", default-features = false }
+peroxide = { version = "0.30", git = "https://github.com/3Dpass/Peroxide", branch = "devel", default-features = false }
+sha2 = { version = "0.10", default-features = false }
+base16ct = { version = "0.1", default-features = false }

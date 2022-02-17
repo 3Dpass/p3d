@@ -1,19 +1,16 @@
-// #![feature(deque_make_contiguous)]
-use std::cmp::{max, min};
-use std::vec::IntoIter;
-use std::collections::vec_deque::VecDeque;
-
-use tri_mesh::prelude::*;
+use alloc::vec::Vec;
+use alloc::vec::IntoIter;
+use alloc::collections::vec_deque::VecDeque;
 
 use crate::contour::CellSet;
 use crate::contour::Cntr;
-
+use cgmath::MetricSpace;
+use cgmath::Point2;
+use cgmath::num_traits::Float;
 
 pub(crate) const DISTANCE: i32 = 2;
-pub(crate) const GRID_SIZE: usize = 6;
 
 type Vec2 = Point2<f64>;
-// pub(crate) type PolyLine = Vec<Point2<i32>>;
 
 #[derive(Clone)]
 pub(crate) struct PolyLine {
@@ -44,7 +41,8 @@ impl<'a> PolyLine {
         let mut ll: Vec<(Point2<f64>, f64)> = vec![(p1, 0.0)];
 
         for p2 in line2.points[1..].iter() {
-            l = l + p1.distance(*p2);
+            // TODO: check distance2
+            l = l + p1.distance2(*p2);
             ll.push((*p2, l));
             p1 = *p2;
         }
@@ -170,10 +168,9 @@ impl GenPolyLines {
         let first_point = self.line_buf.nodes.first().unwrap().clone();
         let neib_nodes = NeiborNodes::new(&self.cells, &self.line_buf, start_point, self.line_buf.grid_size);
 
-        let last = self.line_buf.nodes.last().unwrap();
+        // debug
+        // let last = self.line_buf.nodes.last().unwrap();
         // println!("point: {:?}, neibs: {:?}", last, neib_nodes.neibs);
-        let len = neib_nodes.neibs.len();
-
         // for (i, v1) in neib_nodes.neibs.iter().enumerate() {
         //     for (j, v2) in neib_nodes.neibs.iter().enumerate() {
         //         if j > i && v1 == v2 {
@@ -197,12 +194,12 @@ impl GenPolyLines {
             self.complete_line(f);
             self.line_buf.nodes.pop();
         }
-        // println!("Exit {}", self.lev);
         self.lev -= 1;
     }
 }
 
 
+#[allow(dead_code)]
 #[derive(Clone)]
 struct NeiborNodes {
     pub(crate) neibs: Vec<Point2<i32>>,
