@@ -1,17 +1,17 @@
-#![feature(deque_make_contiguous)]
+#![no_std]
 
-use std::fs::File;
-use std::io::{ BufReader };
-use std::path::PathBuf;
+use alloc::string::String;
+use alloc::vec::Vec;
 
 use obj::{load_obj, Obj, Vertex};
 use tri_mesh::prelude::*;
+use cgmath::Point2;
 
-#[macro_use(s)]
+#[macro_use]
 extern crate ndarray;
 
-//extern crate ndarray_linalg;
-//extern crate openblas_src; // or another backend of your choice
+#[macro_use]
+extern crate alloc;
 
 use ndarray::arr2;
 use ndarray::Array3;
@@ -21,8 +21,6 @@ mod polyline;
 mod contour;
 mod algo_grid;
 use algo_grid::find_top_std;
-use crate::contour::Cntr;
-//use std::intrinsics::log10f32;
 type Vec2 = Point2<f64>;
 
 
@@ -56,11 +54,19 @@ pub enum AlgoType {
 //     r.join("\n")
 // }
 
+// pub fn p3d_process(input_vec: &Vec<u8>, algo: AlgoType, par1: i16, par2: i16 ) -> Vec<String>
+// {
+//     let hashes = vec!["1".to_string(), "1".to_string(), "2".to_string(), "2".to_string(), "3".to_string(), "3".to_string()];
+//     return hashes;
+// }
+
+pub struct P3DError {}
+
 
 #[allow(unused_variables)]
 //pub fn p3d_process<F>(scan_name: &PathBuf, algo: AlgoType, par1: i16, par2: i16, fptr: Option<F>) -> Result<Vec<String>, std::io::Error>
 //    where F: Fn(i64, i64, String) -> i64
-pub fn p3d_process(scan_name: &PathBuf, algo: AlgoType, par1: i16, par2: i16 ) -> Result<Vec<String>, std::io::Error>
+pub fn p3d_process(input: &[u8], algo: AlgoType, par1: i16, par2: i16 ) -> Result<Vec<String>, P3DError>
 {
     let grid_size: i16 = par1;
     let n_sections: i16 = par2;
@@ -93,13 +99,13 @@ pub fn p3d_process(scan_name: &PathBuf, algo: AlgoType, par1: i16, par2: i16 ) -
     //let _input = File::open(scan_name)?;
     // let input = BufReader::new(input);
 
-    let input = BufReader::new(File::open(scan_name)?);
+    // let input = BufReader::new(File::open(scan_name)?);
     let model: Obj<Vertex, u32> = load_obj(input).unwrap();
 
     let verts = model.vertices
         .iter()
         .flat_map(|v| v.position.iter())
-        .map(|v| f64::from(*v))
+        .map(|v| <f64 as cgmath::NumCast>::from(*v).unwrap())
         .collect();
 
     let mut mesh = MeshBuilder::new()
@@ -228,7 +234,7 @@ pub fn p3d_process(scan_name: &PathBuf, algo: AlgoType, par1: i16, par2: i16 ) -
 
     let depth = 10;
     let mut cntrs: Vec<Vec<Vec2>> = Vec::with_capacity(depth);
-    println!("Select top {} hashes", depth);
+    // print!("Select top {} hashes", depth);
     let step = (ma - mi) / (1.0f64 + n_sections as f64);
     for n in 0..n_sections {
         let z_sect = mi + (n as f64 + 1.0f64) * step;

@@ -1,22 +1,23 @@
-use crypto::digest::Digest;
-use crypto::sha2::Sha256;
+use sha2::{Sha256, Digest};
+use base16ct;
 
-use std::ops::SubAssign;
-use std::collections::HashSet;
+use core::ops::SubAssign;
 
-extern crate peroxide;
-use peroxide::numerical::eigen;
+use alloc::vec::Vec;
+use alloc::string::{String, ToString};
+
 use peroxide::numerical::eigen::EigenMethod;
 use peroxide::fuga::*;
 
 use ndarray::{Array1, Array2, Array3, Axis, ArrayView2, ArrayView1, ArrayBase};
-use ndarray::{arr1, arr2};
+use ndarray::arr1;
 
-use tri_mesh::prelude::*;
-//use cgmath::Vector2;
+use tri_mesh::mesh::Mesh;
 
-use crate::contour::Cntr;
-use crate::polyline::PolyLine;
+use cgmath::MetricSpace; // impl distance2
+use cgmath::Point2;
+use cgmath::num_traits::Float;
+
 use crate::polyline::GenPolyLines;
 
 type VctrTriangles = Array3<f64>;
@@ -28,66 +29,26 @@ type Vec2 = Point2<f64>;
 
 
 pub(crate) fn find_top_std(depth: usize, grid_size: i16, cntrs: &Vec<Vec<Vec2>>) -> Vec<String> {
-    //let cn = Cntr::new(Some(cntr.to_vec()), grid_size);
-    // let zone = cn.line_zone();
-    //
-    // let mut z_all: HashSet<(i32, i32)> = HashSet::new();
-    // for i in 0..6 {
-    //     for j in 0..6 {
-    //         z_all.insert((i, j));
-    //     }
-    // }
-    //
-    // let zz = z_all.difference(&zone);
-    // println!("{:?}", zz);
-
-    //let mut gen_lines = GenPolyLines::new(zone, grid_size);
-    //let cntr_size = cn.points.len();
-    // let calc_sco = |pl: &PolyLine| sco2(&cn, &pl.to_cntr(cntr_size));
     let ss = GenPolyLines::select_top(cntrs, grid_size, depth); //, calc_sco);
-    let mut res: Vec<PolyLine> = vec![];
     let mut hashes = vec![];
-    let ll = ss.len();
 
     for a in ss[0..depth].iter() {
-        res.push(a.1.clone());
+        let data: Vec<u8> = a.1.nodes.as_slice().iter()
+            .flat_map(|&p| [p.x.to_be_bytes(), p.y.to_be_bytes()])
+            .flatten()
+            .collect();
 
         let mut hasher = Sha256::new();
-        //hasher.input_str(&"test");
-        //hasher.input(a.1.nodes.as_slice().into());
-        let b = format!("{:?}", a.1.nodes.as_slice());
-        //println!("{:?}", a.1.nodes.as_slice());
-        hasher.input_str(b.as_str());
+        hasher.update(data.as_slice());
 
-        hashes.push(hasher.result_str());
+        let mut buf = [0u8; 64];
+        let hash = hasher.finalize();
+        let hex_hash = base16ct::lower::encode_str(&hash, &mut buf).unwrap();
+
+        hashes.push(hex_hash.to_string());
     }
     hashes
 }
-
-//--------------------------------------------------------
-
-//use std::iter::SourceIter;
-//use std::array::FixedSizeArray;
-
-//type Vctr = Array1<Vector2<f64>>;
-
-
-// fn sco(mut v1: Vctr, mut v2: Vctr) -> f64 {
-//     let mut s = 0f64;
-//     //let a = vec2(1f64, 2f64);
-//     Zip::from(&v1).and(&v2).apply(|&a1, &a2| s += a1.distance(a2));
-//     s
-// }
-
-// fn sco2(v1: &Cntr, v2: &Cntr) -> f64 {
-//     let mut s = 0f64;
-//
-//     for (a1, a2) in v1.points.iter().zip(v2.points.iter()) {
-//         s += (a2.x - a1.x) * (a2.x - a1.x) + (a2.y - a1.y) * (a2.y - a1.y)
-//     }
-//     s / (v1.points.len() as f64)
-// }
-
 
 fn cross(triangles: &VctrTriangles) -> Array2<f64> {
     let dims = triangles.dim();
@@ -101,7 +62,6 @@ fn cross(triangles: &VctrTriangles) -> Array2<f64> {
     }
 
     let mut cr = Array2::zeros((dims.0, dims.1));
-
     for (i, m) in d.axis_iter(Axis(0)).enumerate() {
             let a: ArrayView1<f64> = m.slice(s![0, ..]);
             let b: ArrayView1<f64> = m.slice(s![1, ..]);
@@ -109,10 +69,8 @@ fn cross(triangles: &VctrTriangles) -> Array2<f64> {
             cr[[i, 1]] = a[2]*b[0] - a[0]*b[2];
             cr[[i, 2]] = a[0]*b[1] - a[1]*b[0];
     }
-
     cr
 }
-
 
 pub fn mass_properties(triangles: VctrTriangles) -> (Array1<f64>, Array2<f64>) {
     let p0: ArrayView2<f64> = triangles.slice(s![0.., 0, 0..]);
@@ -130,7 +88,6 @@ pub fn mass_properties(triangles: VctrTriangles) -> (Array1<f64>, Array2<f64>) {
     let d = f1.nrows();
     let mut integral: Array2<f64> = Array2::zeros((10, d));
 
-
     // println!("Triangles:");
     // println!("{:?}", triangles.slice(s![0, .., ..]));
     // println!("{:?}", triangles.slice(s![1, .., ..]));
@@ -138,7 +95,6 @@ pub fn mass_properties(triangles: VctrTriangles) -> (Array1<f64>, Array2<f64>) {
     let crosses = cross(&triangles);
 
     // println!("crosses: {}, {}, {}", crosses.slice(s![0, ..]), crosses.slice(s![1, ..]), crosses.slice(s![2, ..]));
-
 
     integral.slice_mut(s![0..1, ..]).assign(&(&crosses.slice(s![.., 0]) * &f1.slice(s![.., 0])));
     integral.slice_mut(s![1..4, ..]).assign(&(&crosses * &f2).t().slice(s![.., ..]));
@@ -181,29 +137,6 @@ pub fn mass_properties(triangles: VctrTriangles) -> (Array1<f64>, Array2<f64>) {
     };
 
     let density = 1.0;
-    //let mass = density * volume;
-
-
-    // inertia = np.zeros((3, 3))
-    // inertia[0, 0] = integrated[5] + integrated[6] - \
-    // (volume * (center_mass[[1, 2]]**2).sum())
-    // inertia[1, 1] = integrated[4] + integrated[6] - \
-    // (volume * (center_mass[[0, 2]]**2).sum())
-    // inertia[2, 2] = integrated[4] + integrated[5] - \
-    // (volume * (center_mass[[0, 1]]**2).sum())
-    // inertia[0, 1] = (
-    //     integrated[7] - (volume * np.product(center_mass[[0, 1]])))
-    // inertia[1, 2] = (
-    //     integrated[8] - (volume * np.product(center_mass[[1, 2]])))
-    // inertia[0, 2] = (
-    //     integrated[9] - (volume * np.product(center_mass[[0, 2]])))
-    // inertia[2, 0] = inertia[0, 2]
-    // inertia[2, 1] = inertia[1, 2]
-    // inertia[1, 0] = inertia[0, 1]
-    // inertia *= density
-    // result['inertia'] = inertia
-    //
-    // return result
 
     let mut inertia: Array2<f64> = Array2::zeros((3, 3));
 
@@ -252,37 +185,8 @@ fn principal_axis(inertia: Array2<f64>) -> (Array1<f64>, Array2<f64>) {
     (components, vectors.reversed_axes())
 }
 
-
+#[allow(dead_code)]
 fn transform_arround(matrix: Array2<f64>, point: &Array1<f64>) -> Array2<f64> {
-    // def transform_around(matrix, point):
-    //     """
-    //     Given a transformation matrix, apply its rotation
-    //     around a point in space.
-    //
-    //     Parameters
-    //     ----------
-    //     matrix: (4,4) or (3, 3) float, transformation matrix
-    //     point:  (3,) or (2,)  float, point in space
-    //
-    //     Returns
-    //     ---------
-    //     result: (4,4) transformation matrix
-    //     """
-    //     point = np.asanyarray(point)
-    //     matrix = np.asanyarray(matrix)
-    //     dim = len(point)
-    //     if matrix.shape != (dim + 1,
-    //                         dim + 1):
-    //         raise ValueError('matrix must be (d+1, d+1)')
-    //
-    //     translate = np.eye(dim + 1)
-    //     translate[:dim, dim] = -point
-    //     result = np.dot(matrix, translate)
-    //     translate[:dim, dim] = point
-    //     result = np.dot(translate, result)
-    //
-    //     return result
-
     let mut translate: Array2<f64> = Array2::eye(4);
     translate.slice_mut(s![..3, ..3]).sub_assign(point);
 
@@ -298,8 +202,6 @@ pub fn principal_inertia_transform(triangles: VctrTriangles) -> Array2<f64>{
     let (center_mass, inertia) = mass_properties(triangles);
     let (_components, vectors) = principal_axis(inertia);
 
-    // let pic = principal_inertia_axis(inertia)[0];
-
     // println!("center_mass: {}", center_mass);
     // println!("vectors: {:?}", vectors);
     // println!("_components: {:?}", _components);
@@ -311,7 +213,6 @@ pub fn principal_inertia_transform(triangles: VctrTriangles) -> Array2<f64>{
 
     // TODO:
     transform.slice_mut(s![..3, ..3]).assign(&vcts);
-
 
     // let mut tr = transform_arround(transform, &center_mass);
     transform.slice_mut(s![..3, 3]).sub_assign(&center_mass);
@@ -375,10 +276,6 @@ pub fn get_contour(mesh: &Mesh, z_sect: f64) -> Vec<Point2<f64>> {
         let p = Point2{x: p0.x + (n as f64)  * d2, y: p0.y + (n as f64) * d2 * k};
         cntr.push(p);
     }
-
-    let ll = cntr.len();
-    // println!("{:?}", cntr);
-    let e = 0;
 
     cntr
 }
