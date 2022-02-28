@@ -2,6 +2,8 @@ use alloc::vec::Vec;
 use alloc::collections::BTreeSet as HashSet;
 
 use cgmath::Point2;
+
+#[allow(unused_imports)]
 use cgmath::num_traits::real::Real; // round
 
 pub(crate) type CellSet = HashSet<(i32, i32)>;
