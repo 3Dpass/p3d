@@ -16,6 +16,7 @@ use tri_mesh::mesh::Mesh;
 
 use cgmath::MetricSpace; // impl distance2
 use cgmath::Point2;
+#[allow(unused_imports)]
 use cgmath::num_traits::Float;
 
 use crate::polyline::GenPolyLines;

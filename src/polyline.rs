@@ -6,6 +6,7 @@ use crate::contour::CellSet;
 use crate::contour::Cntr;
 use cgmath::MetricSpace;
 use cgmath::Point2;
+#[allow(unused_imports)]
 use cgmath::num_traits::Float;
 
 pub(crate) const DISTANCE: i32 = 2;
