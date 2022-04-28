@@ -238,10 +238,9 @@ dependencies = [
 [[package]]
 name = "order-stat"
 version = "0.1.3"
-source = "git+https://github.com/3Dpass/order-stat?branch=dev#48ba3c3297639876b4d393bcd101aaeb3b835e0c"
+source = "git+https://github.com/3Dpass/order-stat?branch=dev#c1c0d34fe4394f63f6e820993575c4b9dbc5464b"
 dependencies = [
  "libm 0.2.1",
- "sp-std",
 ]
 
 [[package]]
@@ -351,11 +350,6 @@ dependencies = [
  "cpufeatures",
  "digest",
 ]
-
-[[package]]
-name = "sp-std"
-version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate.git?tag=monthly-2021-11-1#352c46a648a5f2d4526e790a184daa4a1ffdb3bf"
 
 [[package]]
 name = "static_assertions"
