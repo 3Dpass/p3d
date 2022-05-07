@@ -33,7 +33,7 @@ pub(crate) fn find_top_std(depth: usize, grid_size: i16, cntrs: &Vec<Vec<Vec2>>)
     let ss = GenPolyLines::select_top(cntrs, grid_size, depth); //, calc_sco);
     let mut hashes = vec![];
 
-    for a in ss[0..depth].iter() {
+    for a in ss.iter() {
         let data: Vec<u8> = a.1.nodes.as_slice().iter()
             .flat_map(|&p| [p.x.to_be_bytes(), p.y.to_be_bytes()])
             .flatten()
