@@ -30,8 +30,12 @@ type Vec2 = Point2<f64>;
 
 
 pub(crate) fn find_top_std(depth: usize, grid_size: i16, cntrs: &Vec<Vec<Vec2>>) -> Vec<String> {
-    let ss = GenPolyLines::select_top(cntrs, grid_size, depth); //, calc_sco);
     let mut hashes = vec![];
+    if cntrs.len() == 0 {
+        return hashes;
+    }
+
+    let ss = GenPolyLines::select_top(cntrs, grid_size, depth); //, calc_sco);
 
     for a in ss.iter() {
         let data: Vec<u8> = a.1.nodes.as_slice().iter()
@@ -231,6 +235,10 @@ pub fn get_contour(mesh: &Mesh, z_sect: f64) -> Vec<Point2<f64>> {
         if (p.z - z_sect).abs() < 0.15 {
             sect.push(Vec2{x: p.x, y: p.y});
         }
+    }
+
+    if sect.len() == 0 {
+        return Vec::new();
     }
 
     let len = sect.len();
