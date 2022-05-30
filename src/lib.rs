@@ -239,7 +239,9 @@ pub fn p3d_process(input: &[u8], algo: AlgoType, par1: i16, par2: i16 ) -> Resul
     for n in 0..n_sections {
         let z_sect = mi + (n as f64 + 1.0f64) * step;
         let cntr = get_contour(&mesh, z_sect);
-        cntrs.push(cntr);
+        if cntrs.len() > 0 {
+            cntrs.push(cntr);
+        }
     }
 
     let res = find_top_std(depth as usize, grid_size, &cntrs);
