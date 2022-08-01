@@ -1,4 +1,4 @@
-#![no_std]
+// use std::fs::File;
 
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -20,6 +20,7 @@ use crate::algo_grid::get_contour;
 mod polyline;
 mod contour;
 mod algo_grid;
+pub mod ffi_interface;
 use algo_grid::find_top_std;
 type Vec2 = Point2<f64>;
 
@@ -60,6 +61,17 @@ pub enum AlgoType {
 //     return hashes;
 // }
 
+
+// To TEST the FFI interface in the CMD
+// fn main(){
+//     let res = ffi_interface::calc_inner(7, 10, "./pir1 3.obj".to_string());
+//     let r = match res {
+//         Ok(h) => println!("{}", h),
+//         Err(_e) => println!("error"),
+//     };
+//     // println!("Hello, world!");
+// }
+
 pub struct P3DError {}
 
 
@@ -67,7 +79,7 @@ pub struct P3DError {}
 //pub fn p3d_process<F>(scan_name: &PathBuf, algo: AlgoType, par1: i16, par2: i16, fptr: Option<F>) -> Result<Vec<String>, std::io::Error>
 //    where F: Fn(i64, i64, String) -> i64
 pub fn p3d_process(input: &[u8], algo: AlgoType, par1: i16, par2: i16 ) -> Result<Vec<String>, P3DError>
-{
+{   
     let grid_size: i16 = par1;
     let n_sections: i16 = par2;
 

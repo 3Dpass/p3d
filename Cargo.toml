@@ -7,6 +7,10 @@ edition = "2018"
 [build]
 target = "wasm32-unknown-unknown"
 
+[lib]
+name = "calc"
+crate-type = ["staticlib", "cdylib"]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
