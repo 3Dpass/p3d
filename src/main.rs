@@ -63,14 +63,14 @@ pub enum AlgoType {
 
 
 // To TEST the FFI interface in the CMD
-// fn main(){
-//     let res = ffi_interface::calc_inner(7, 10, "./pir1 3.obj".to_string());
-//     let r = match res {
-//         Ok(h) => println!("{}", h),
-//         Err(_e) => println!("error"),
-//     };
-//     // println!("Hello, world!");
-// }
+fn main(){
+    let res = ffi_interface::calc_inner(6, 6, "./pir1 3.obj".to_string());
+    let r = match res {
+        Ok(h) => println!("{}", h),
+        Err(_e) => println!("error"),
+    };
+    // println!("Hello, world!");
+}
 
 pub struct P3DError {}
 
@@ -82,6 +82,8 @@ pub fn p3d_process(input: &[u8], algo: AlgoType, par1: i16, par2: i16 ) -> Resul
 {   
     let grid_size: i16 = par1;
     let n_sections: i16 = par2;
+
+    println!("input {}",input.len());
 
     // let a = fptr(15, 1, "Start".to_owned());
 
@@ -231,6 +233,7 @@ pub fn p3d_process(input: &[u8], algo: AlgoType, par1: i16, par2: i16 ) -> Resul
     let (mut mi, mut ma) = (1.0e10, -1.0e10);
 
     for vid in mesh.vertex_iter() {
+        println!("Never called");
         let v = mesh.vertex_position(vid);
         if v.z < mi {
             mi = v.z;
@@ -246,17 +249,22 @@ pub fn p3d_process(input: &[u8], algo: AlgoType, par1: i16, par2: i16 ) -> Resul
 
     let depth = 10;
     let mut cntrs: Vec<Vec<Vec2>> = Vec::with_capacity(depth);
+    
+
     // print!("Select top {} hashes", depth);
     let step = (ma - mi) / (1.0f64 + n_sections as f64);
     for n in 0..n_sections {
         let z_sect = mi + (n as f64 + 1.0f64) * step;
         let cntr = get_contour(&mesh, z_sect);
+        println!("iteration: {}. cntr_len={}", n, cntr.len());
         if cntr.len() > 0 {
             cntrs.push(cntr);
         }
     }
 
     let res = find_top_std(depth as usize, grid_size, &cntrs);
+
+    println!("{} {} {} n_sections={}", depth.to_string(), grid_size.to_string(), cntrs.is_empty(),n_sections.to_string());
 
     Ok(res)
 }
