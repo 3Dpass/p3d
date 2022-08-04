@@ -63,14 +63,14 @@ pub enum AlgoType {
 
 
 // To TEST the FFI interface in the CMD
-fn main(){
-    let res = ffi_interface::calc_inner(6, 6, "./pir1 3.obj".to_string());
-    let r = match res {
-        Ok(h) => println!("{}", h),
-        Err(_e) => println!("error"),
-    };
-    // println!("Hello, world!");
-}
+// fn main(){
+//     let res = ffi_interface::calc_inner(6, 6, "./pir1 3.obj".to_string());
+//     let r = match res {
+//         Ok(h) => println!("{}", h),
+//         Err(_e) => println!("error"),
+//     };
+//     // println!("Hello, world!");
+// }
 
 pub struct P3DError {}
 

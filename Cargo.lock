@@ -244,6 +244,7 @@ version = "0.1.0"
 dependencies = [
  "base16ct",
  "cgmath",
+ "libc",
  "libm 0.2.1",
  "ndarray",
  "obj-rs",

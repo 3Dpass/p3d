@@ -7,14 +7,15 @@ edition = "2018"
 [build]
 target = "wasm32-unknown-unknown"
 
-#[lib]
-#name = "calc"
-#crate-type = ["staticlib", "cdylib"]
+[lib]
+name = "calc"
+crate-type = ["staticlib", "cdylib"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 libm = { version = "0.2", default-features = false }
+libc = "0.2.0"
 cgmath = { version = "0.18", git = "https://github.com/3Dpass/cgmath", branch = "master", default-features = false }
 tri-mesh = { version = "0.5.0", git = "https://github.com/3Dpass/tri-mesh", branch = "dev", default-features = false }
 obj-rs = { version = "0.7", git = "https://github.com/3Dpass/obj-rs", branch = "dev", default-features = false }
