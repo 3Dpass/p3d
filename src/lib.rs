@@ -16,6 +16,7 @@ extern crate alloc;
 use ndarray::arr2;
 use ndarray::Array3;
 use crate::algo_grid::get_contour;
+use crate::contour::Rect;
 
 mod polyline;
 mod contour;
@@ -30,36 +31,7 @@ pub enum AlgoType {
     Spectr,
 }
 
-// type ProgressFunc = |pct: i64, status: i64, descr: String| -> u32;
-
-// pub fn calc<F>(par1: i16, par2: i16, path: String, fptr: F) -> String
-//     where F: Fn(i64, i64, String) -> i64
-// {
-//     // a.wrapping_add(b)
-//     //let path = PathBuf::from(r"assets/st1.obj");
-//     let p = PathBuf::from(path.clone());
-//
-//     dbg!("rust: {:?}", p.clone());
-//
-//     // path + "-res"
-//
-//     let res_hashes = p3d_process(&p, AlgoType::Grid2d, par1, par2, Some(fptr));
-//     // println!("{:?}", res_hashes);
-//     let r = match res_hashes {
-//         Ok(h) => h,
-//         Err(e) => vec![format!("{:?}", e)],
-//     };
-//
-//     //format!("{}", r)
-//     r.join("\n")
-// }
-
-// pub fn p3d_process(input_vec: &Vec<u8>, algo: AlgoType, par1: i16, par2: i16 ) -> Vec<String>
-// {
-//     let hashes = vec!["1".to_string(), "1".to_string(), "2".to_string(), "2".to_string(), "3".to_string(), "3".to_string()];
-//     return hashes;
-// }
-
+#[derive(Debug)]
 pub struct P3DError {}
 
 
@@ -71,35 +43,6 @@ pub fn p3d_process(input: &[u8], algo: AlgoType, par1: i16, par2: i16 ) -> Resul
     let grid_size: i16 = par1;
     let n_sections: i16 = par2;
 
-    // let a = fptr(15, 1, "Start".to_owned());
-
-    // use crate::algo_grid::mass_properties;
-    // let triangles: Array3<f64> = arr3(
-    //     &[
-    //         [[1.,2.,3.], [1.,2.,3.], [1.,2.,3.]],
-    //         [[1.,2.,3.], [1.,2.,3.], [1.,2.,3.]],
-    //         [[1.,2.,3.], [1.,2.,3.], [1.,2.,3.]],
-    //         [[1.,2.,3.], [1.,2.,3.], [1.,2.,3.]],
-    //         [[1.,2.,3.], [1.,2.,3.], [1.,2.,3.]],
-    //         [[1.,2.,3.], [1.,2.,3.], [1.,2.,3.]],
-    //     ]);
-
-    //let res = mass_properties(triangles);
-
-    // let result = std::fs::read_to_string(&args.infile);
-    //
-    // let content = match result {
-    //     Ok(content) => { content },
-    //     Err(error) => { return Err(error.into());  }
-    // };
-    // println!("file content: {}", content);
-
-    // let mut mesh = MeshBuilder::new().with_obj(scan_name.clone().into_os_string().into_string().unwrap()).build().unwrap();
-
-    //let _input = File::open(scan_name)?;
-    // let input = BufReader::new(input);
-
-    // let input = BufReader::new(File::open(scan_name)?);
     let model: Obj<Vertex, u32> = load_obj(input).unwrap();
 
     let verts = model.vertices
@@ -132,9 +75,6 @@ pub fn p3d_process(input: &[u8], algo: AlgoType, par1: i16, par2: i16 ) -> Resul
 
     let pit1 = algo_grid::principal_inertia_transform(triangles);
 
-    // println!("Transform matrix:");
-    // println!("{}", pit1);
-
     let pit = pit1; //.t();
 
     let a: Matrix4<f64> = Matrix4::new(
@@ -161,90 +101,36 @@ pub fn p3d_process(input: &[u8], algo: AlgoType, par1: i16, par2: i16 ) -> Resul
 
     let shift = Vector3::new(pit[[0,3]], pit[[1,3]], pit[[2,3]]);
 
-
-    // let m: Matrix4<f64> = Matrix4::new(
-    //     bbb.x[0], bbb.y[0], bbb.z[0], pit[[0,3]],
-    //     bbb.x[1], bbb.y[1], bbb.z[1], pit[[1,3]],
-    //     bbb.x[2], bbb.y[2], bbb.z[2], pit[[2,3]],
-    //     pit[[3,0]], pit[[3,1]], pit[[3,2]], pit[[3,3]],
-    //     );
-
-    // let m: Matrix4<f64> = Matrix4::new(
-    //     bbb.x[0], bbb.y[0], bbb.z[0], pit[[3, 0]],
-    //     bbb.x[1], bbb.y[1], bbb.z[1], pit[[3, 1]],
-    //     bbb.x[2], bbb.y[2], bbb.z[2], pit[[3, 2]],
-    //     pit[[0,3]], pit[[1,3]], pit[[2,3]], pit[[3,3]],
-    // );
-
-    // semi good
-    // let m: Matrix4<f64> = Matrix4::new(
-    //     bbb.x[0], bbb.y[0], bbb.z[0], pit[[3, 0]],
-    //     bbb.x[1], bbb.y[1], bbb.z[1], pit[[3, 1]],
-    //     bbb.x[2], bbb.y[2], bbb.z[2], pit[[3, 2]],
-    //     pit[[0,3]], pit[[1,3]], pit[[2,3]], pit[[3,3]],
-    // );
-
-
-    // let m: Matrix4<f64> = Matrix4::new(
-    //      1.0, 0.0, 0.0,0.0,
-    //      0.0, 1.0, 0.0,50.0,
-    //      0.0, 0.0, 1.0,0.0,
-    //      0.0, 0.0, 0.0,1.0,
-    //      );
-
-    // let m: Matrix4<f64> = Matrix4::new(
-    //     bbb.x[0], bbb.y[0], bbb.z[0], 60.0,
-    //     bbb.x[1], bbb.y[1], bbb.z[1], 0.0,
-    //     bbb.x[2], bbb.y[2], bbb.z[2], 0.0,
-    //     0.0, 0.0, 0.0, 1.0,
-    // );
-
-
-    //let mm = m.transpose();
-    //println!("{:?}", tr);
-
     mesh.translate(shift);
     mesh.apply_transformation(tr);
 
-
-    // let p = Vec3::new(0.0, 0.0, 0.0);
-    // let p_new = (mm * p.extend(1.0)).truncate();
-
-    //
-    // let obj_source = mesh.parse_as_obj();
-    // // // //
-    // // // // Write the string to an .obj file
-    // std::fs::write("foo.obj", obj_source)?;
-
-    let (mut mi, mut ma) = (1.0e10, -1.0e10);
+    let (mut min_x, mut max_x) = (f64::MAX, f64::MIN);
+    let (mut min_y, mut max_y) = (f64::MAX, f64::MIN);
+    let (mut min_z, mut max_z) = (f64::MAX, f64::MIN);
 
     for vid in mesh.vertex_iter() {
         let v = mesh.vertex_position(vid);
-        if v.z < mi {
-            mi = v.z;
-        }
-        if v.z > ma {
-            ma = v.z;
-        }
+        if v.x < min_x { min_x = v.x; }
+        if v.x > max_x { max_x = v.x; }
+        if v.y < min_y { min_y = v.y; }
+        if v.y > max_y { max_y = v.y; }
+        if v.z < min_z { min_z = v.z; }
+        if v.z > max_z { max_z = v.z; }
     }
-
-    // let z_sect = (ma + mi) / 2.0;
-    // let depth: i32 = (10.0 * (10.0 / (1.0f64 + n_sections as f64)).log10()).floor() as i32;
-    // let mut results: Vec<Vec<String>> = Vec::with_capacity(depth.pow(n_sections as u32) as usize);
 
     let depth = 10;
     let mut cntrs: Vec<Vec<Vec2>> = Vec::with_capacity(depth);
-    // print!("Select top {} hashes", depth);
-    let step = (ma - mi) / (1.0f64 + n_sections as f64);
+    let step = (max_z - min_z) / (1.0f64 + n_sections as f64);
     for n in 0..n_sections {
-        let z_sect = mi + (n as f64 + 1.0f64) * step;
+        let z_sect = min_z + (n as f64 + 1.0f64) * step;
         let cntr = get_contour(&mesh, z_sect);
         if cntr.len() > 0 {
             cntrs.push(cntr);
         }
     }
+    let rect = Rect::new(min_x, max_x, min_y, max_y);
 
-    let res = find_top_std(depth as usize, grid_size, &cntrs);
+    let res = find_top_std(&cntrs, depth as usize, grid_size, rect);
 
     Ok(res)
 }

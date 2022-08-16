@@ -2,8 +2,7 @@ use alloc::vec::Vec;
 use alloc::vec::IntoIter;
 use alloc::collections::vec_deque::VecDeque;
 
-use crate::contour::CellSet;
-use crate::contour::Cntr;
+use crate::contour::{CellSet, Cntr, Rect};
 use cgmath::MetricSpace;
 use cgmath::Point2;
 #[allow(unused_imports)]
@@ -24,19 +23,23 @@ impl<'a> PolyLine {
         Self {
             //nodes: Vec::with_capacity(100),
             nodes: pts,
-            grid_size: grid_size,
+            grid_size,
         }
     }
 
-    pub(crate) fn to_cntr(&self, n_points: usize) -> Cntr {
-        self.line2points(n_points)
-    }
-
-    fn line2points(&self, n: usize) -> Cntr {
+    fn line2points(
+        &self,
+        n: usize,
+        rect: &Rect,
+    ) -> Cntr {
         let mut l: f64 = 0.0;
 
-        let mut res: Cntr = Cntr::new(None, self.grid_size);
-        let line2: Cntr = Cntr::new(Some(self.nodes.iter().map(|v| Point2::new(v.x as f64 + 0.5, v.y as f64 + 0.5)).collect()), self.grid_size);
+        let mut res: Cntr = Cntr::new(None, self.grid_size, rect);
+        let line2: Cntr = Cntr::new(
+            Some(self.nodes.iter().map(|v| Point2::new(v.x as f64 + 0.5, v.y as f64 + 0.5)).collect()),
+            self.grid_size,
+            rect,
+        );
 
         let mut p1 = line2.points[0];
         let mut ll: Vec<(Point2<f64>, f64)> = vec![(p1, 0.0)];
@@ -118,13 +121,15 @@ impl GenPolyLines {
         s / (v1.points.len() as f64)
     }
 
-    pub (crate) fn select_top(cntrs: &Vec<Vec<Vec2>>, grid_size: i16, n: usize) -> Vec<(f64, PolyLine)> {
+    pub (crate) fn select_top(
+        cntrs: &Vec<Vec<Vec2>>, n: usize, grid_size: i16, rect: Rect,
+    ) -> Vec<(f64, PolyLine)> {
 
         let mut top_heap: VecDeque<(f64, PolyLine)> = VecDeque::with_capacity(n);
         // TODO: select strt point from self.cells
 
         for cntr in cntrs.iter() {
-            let cn = Cntr::new(Some(cntr.to_vec()), grid_size);
+            let cn = Cntr::new(Some(cntr.to_vec()), grid_size, &rect);
             let zone = cn.line_zone();
 
             let mut gen_lines = GenPolyLines::new(zone, grid_size);
@@ -132,7 +137,10 @@ impl GenPolyLines {
             gen_lines.line_buf.nodes.push(start_point);
 
             let cntr_size = cn.points.len();
-            let calc_sco = |pl: &PolyLine| GenPolyLines::sco2(&cn, &pl.to_cntr(cntr_size));
+            let calc_sco = |pl: &PolyLine|
+                GenPolyLines::sco2(
+                    &cn, &pl.line2points(cntr_size, &rect),
+                );
 
             let mut ff = |pl: &PolyLine| {
                 let d = calc_sco(pl);

@@ -1,6 +1,6 @@
 [package]
 name = "p3d"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["mish"]
 edition = "2018"
 

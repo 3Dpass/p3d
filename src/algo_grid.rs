@@ -20,6 +20,7 @@ use cgmath::Point2;
 use cgmath::num_traits::Float;
 
 use crate::polyline::GenPolyLines;
+use crate::contour::Rect;
 
 type VctrTriangles = Array3<f64>;
 //type Triangle = Array3<f64>;
@@ -29,13 +30,15 @@ type VctrTriangles = Array3<f64>;
 type Vec2 = Point2<f64>;
 
 
-pub(crate) fn find_top_std(depth: usize, grid_size: i16, cntrs: &Vec<Vec<Vec2>>) -> Vec<String> {
+pub(crate) fn find_top_std(
+    cntrs: &Vec<Vec<Vec2>>, depth: usize, grid_size: i16, rect: Rect,
+) -> Vec<String> {
     let mut hashes = vec![];
     if cntrs.len() == 0 {
         return hashes;
     }
 
-    let ss = GenPolyLines::select_top(cntrs, grid_size, depth); //, calc_sco);
+    let ss = GenPolyLines::select_top(cntrs, depth, grid_size, rect);
 
     for a in ss.iter() {
         let data: Vec<u8> = a.1.nodes.as_slice().iter()
