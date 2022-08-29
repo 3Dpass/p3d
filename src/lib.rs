@@ -38,7 +38,7 @@ pub struct P3DError {}
 #[allow(unused_variables)]
 //pub fn p3d_process<F>(scan_name: &PathBuf, algo: AlgoType, par1: i16, par2: i16, fptr: Option<F>) -> Result<Vec<String>, std::io::Error>
 //    where F: Fn(i64, i64, String) -> i64
-pub fn p3d_process(input: &[u8], algo: AlgoType, par1: i16, par2: i16 ) -> Result<Vec<String>, P3DError>
+pub fn p3d_process(input: &[u8], algo: AlgoType, par1: i16, par2: i16, trans: Option<[u8;4]>) -> Result<Vec<String>, P3DError>
 {
     let grid_size: i16 = par1;
     let n_sections: i16 = par2;
@@ -104,31 +104,28 @@ pub fn p3d_process(input: &[u8], algo: AlgoType, par1: i16, par2: i16 ) -> Resul
     mesh.translate(shift);
     mesh.apply_transformation(tr);
 
-    let (mut min_x, mut max_x) = (f64::MAX, f64::MIN);
-    let (mut min_y, mut max_y) = (f64::MAX, f64::MIN);
-    let (mut min_z, mut max_z) = (f64::MAX, f64::MIN);
-
-    for vid in mesh.vertex_iter() {
-        let v = mesh.vertex_position(vid);
-        if v.x < min_x { min_x = v.x; }
-        if v.x > max_x { max_x = v.x; }
-        if v.y < min_y { min_y = v.y; }
-        if v.y > max_y { max_y = v.y; }
-        if v.z < min_z { min_z = v.z; }
-        if v.z > max_z { max_z = v.z; }
+    if let Some(rot) = trans {
+        let v: Vec<f64> = rot[0..4].iter().map(|&r| (r as f64) * 45.0 / 256.0).collect();
+        let axis: Vector3<f64> = Vector3::new(v[0], v[1], v[2]);
+        mesh.apply_transformation(
+            Mat4::from_axis_angle(
+                axis.normalize(),
+                Deg((v[3] as f64) * 360.0 / 256.0))
+        );
     }
+    let (v_min, v_max) = mesh.extreme_coordinates();
 
     let depth = 10;
     let mut cntrs: Vec<Vec<Vec2>> = Vec::with_capacity(depth);
-    let step = (max_z - min_z) / (1.0f64 + n_sections as f64);
+    let step = (v_max.z - v_min.z) / (1.0f64 + n_sections as f64);
     for n in 0..n_sections {
-        let z_sect = min_z + (n as f64 + 1.0f64) * step;
+        let z_sect = v_min.z + (n as f64 + 1.0f64) * step;
         let cntr = get_contour(&mesh, z_sect);
         if cntr.len() > 0 {
             cntrs.push(cntr);
         }
     }
-    let rect = Rect::new(min_x, max_x, min_y, max_y);
+    let rect = Rect::new(v_min.x, v_max.x, v_min.y, v_max.y);
 
     let res = find_top_std(&cntrs, depth as usize, grid_size, rect);
 
