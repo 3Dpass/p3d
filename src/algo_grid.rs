@@ -55,6 +55,7 @@ pub(crate) fn find_top_std(
 
         hashes.push(hex_hash.to_string());
     }
+    hashes.dedup();
     hashes
 }
 
