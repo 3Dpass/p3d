@@ -41,11 +41,7 @@ pub(crate) fn find_top_std(
     let ss = GenPolyLines::select_top(cntrs, depth, grid_size, rect);
 
     for a in ss.iter() {
-        let data: Vec<u8> = a.1.nodes.as_slice().iter()
-            .flat_map(|&p| [p.x.to_be_bytes(), p.y.to_be_bytes()])
-            .flatten()
-            .collect();
-
+        let data: &Vec<u8> = &a.1;
         let mut hasher = Sha256::new();
         hasher.update(data.as_slice());
 
@@ -55,6 +51,7 @@ pub(crate) fn find_top_std(
 
         hashes.push(hex_hash.to_string());
     }
+    hashes.dedup();
     hashes
 }
 

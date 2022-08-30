@@ -2,6 +2,8 @@ use alloc::vec::Vec;
 use alloc::vec::IntoIter;
 use alloc::collections::vec_deque::VecDeque;
 
+use sha2::{Sha256, Digest};
+
 use crate::contour::{CellSet, Cntr, Rect};
 use cgmath::MetricSpace;
 use cgmath::Point2;
@@ -9,6 +11,7 @@ use cgmath::Point2;
 use cgmath::num_traits::Float;
 
 pub(crate) const DISTANCE: i32 = 2;
+pub(crate) const N_CNTR: usize = 2;
 
 type Vec2 = Point2<f64>;
 
@@ -121,14 +124,27 @@ impl GenPolyLines {
         s / (v1.points.len() as f64)
     }
 
+    fn calc_hash(a: &PolyLine) -> Vec<u8> {
+        let data: Vec<u8> = a.nodes.as_slice().iter()
+            .flat_map(|&p| [p.x.to_be_bytes(), p.y.to_be_bytes()])
+            .flatten()
+            .collect();
+
+        let mut hasher = Sha256::new();
+        hasher.update(data.as_slice());
+        let hash = hasher.finalize();
+        hash.to_vec()
+    }
+
     pub (crate) fn select_top(
         cntrs: &Vec<Vec<Vec2>>, n: usize, grid_size: i16, rect: Rect,
-    ) -> Vec<(f64, PolyLine)> {
+    ) -> Vec<(f64, Vec<u8>)> {
+        let mut top_heap: VecDeque<(f64, Vec<u8>)> = VecDeque::with_capacity(n);
+        let mut top_cntr_all: Vec<VecDeque<(f64, Vec<u8>)>> = Vec::with_capacity(n);
 
-        let mut top_heap: VecDeque<(f64, PolyLine)> = VecDeque::with_capacity(n);
-        // TODO: select strt point from self.cells
-
-        for cntr in cntrs.iter() {
+        for (i, cntr) in cntrs.iter().enumerate() {
+            top_cntr_all.push(VecDeque::new());
+            let top_cntr = &mut top_cntr_all[i];
             let cn = Cntr::new(Some(cntr.to_vec()), grid_size, &rect);
             let zone = cn.line_zone();
 
@@ -144,27 +160,40 @@ impl GenPolyLines {
 
             let mut ff = |pl: &PolyLine| {
                 let d = calc_sco(pl);
-                let len = top_heap.len();
+                let len = top_cntr.len();
                 if len > 0 {
-                    if d < top_heap.get(len - 1).unwrap().0 || len <= n {
-                        if len == n {
-                            top_heap.pop_front();
+                    if d < top_cntr.get(len - 1).unwrap().0 || len <= N_CNTR {
+                        if len == N_CNTR {
+                            top_cntr.pop_front();
                         }
-                        top_heap.push_back((d, pl.clone()));
-                        top_heap.make_contiguous().sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
+                        top_cntr.push_back((d, Self::calc_hash(&pl)));
+                        top_cntr.make_contiguous().sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
                     }
                 } else {
-                    top_heap.push_back((d, pl.clone()));
-                    // top_heap.make_contiguous().sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
+                    top_cntr.push_back((d, Self::calc_hash(&pl)));
                 }
             };
 
             gen_lines.complete_line(&mut ff);
         }
+
+        for i in 0..top_cntr_all.len() {
+            for k in 0..N_CNTR {
+                let mut d: f64 = 0.0;
+                let mut s = vec![];
+                for j in 0..top_cntr_all.len() {
+                    let m = if i == j { k } else { 0 };
+                    d += top_cntr_all[j][m].0;
+                    s.append(&mut top_cntr_all[j][m].1.clone());
+                }
+                top_heap.push_back((d, s));
+            }
+        }
+
+        top_heap.make_contiguous().sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
         let v = top_heap.iter().cloned().collect();
 
         v
-
     }
 
     fn complete_line<F>(&mut self, f: &mut F)
