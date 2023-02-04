@@ -71,6 +71,9 @@ pub(crate) fn find_top_std_2(
 
     const N: usize = 2;
     let ss = GenPolyLines::select_top_all(cntrs, depth, grid_size, rect);
+    if ss.len() < n_sect {
+        return hashes;
+    }
     let mut best_totals: VecDeque<(f64, Vec<u8>)> = VecDeque::with_capacity(depth);
 
     let mut ff = |d: f64, hash: Vec<u8>| {

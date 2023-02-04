@@ -240,7 +240,7 @@ dependencies = [
 
 [[package]]
 name = "p3d"
-version = "0.3.1"
+version = "0.3.2"
 dependencies = [
  "base16ct",
  "cgmath",
