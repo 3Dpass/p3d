@@ -24,6 +24,7 @@ mod algo_grid;
 use algo_grid::{
     find_top_std,
     find_top_std_2,
+    find_top_std_3,
 };
 type Vec2 = Point2<f64>;
 
@@ -32,6 +33,7 @@ type Vec2 = Point2<f64>;
 pub enum AlgoType {
     Grid2d,
     Grid2dV2,
+    Grid2dV3,
     Spectr,
 }
 
@@ -133,6 +135,7 @@ pub fn p3d_process(input: &[u8], algo: AlgoType, par1: i16, par2: i16, trans: Op
 
     let res = match algo {
         AlgoType::Grid2dV2 => find_top_std_2(&cntrs, depth as usize, n_sections as usize, grid_size as usize, rect),
+        AlgoType::Grid2dV3 => find_top_std_3(&cntrs, depth as usize, n_sections as usize, grid_size as usize, rect),
         _ => find_top_std(&cntrs, depth as usize, grid_size, rect),
     };
 
