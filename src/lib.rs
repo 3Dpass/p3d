@@ -108,12 +108,16 @@ pub fn p3d_process(input: &[u8], algo: AlgoType, par1: i16, par2: i16, trans: Op
     mesh.apply_transformation(tr);
 
     if let Some(rot) = trans {
-        let v: Vec<f64> = rot[0..4].iter().map(|&r| (r as f64) * 45.0 / 256.0).collect();
-        let axis: Vector3<f64> = Vector3::new(v[0], v[1], v[2]);
+        let axis_normalized = Vector3::new(
+            rot[0] as f64 * 45.0 / 256.0,
+            rot[1] as f64 * 45.0 / 256.0,
+            rot[2] as f64 * 45.0 / 256.0,
+        ).normalize();
         mesh.apply_transformation(
             Mat4::from_axis_angle(
-                axis.normalize(),
-                Deg((v[3] as f64) * 360.0 / 256.0))
+                axis_normalized,
+                Deg(rot[3] as f64 * 360.0 / 256.0),
+            )
         );
     }
     let (v_min, v_max) = mesh.extreme_coordinates();
