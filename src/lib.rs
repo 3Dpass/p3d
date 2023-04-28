@@ -78,9 +78,7 @@ pub fn p3d_process(input: &[u8], algo: AlgoType, par1: i16, par2: i16, trans: Op
                 ));
     }
 
-    let pit1 = algo_grid::principal_inertia_transform(triangles);
-
-    let pit = pit1; //.t();
+    let pit = algo_grid::principal_inertia_transform(triangles);
 
     let a: Matrix4<f64> = Matrix4::new(
         pit[[0, 0]], pit[[0, 1]], pit[[0, 2]], pit[[0, 3]],
