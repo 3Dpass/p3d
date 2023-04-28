@@ -53,7 +53,7 @@ pub fn p3d_process(input: &[u8], algo: AlgoType, par1: i16, par2: i16, trans: Op
     let vertices = model.vertices
         .iter()
         .flat_map(|v| v.position.iter())
-        .map(|v| <f64 as cgmath::NumCast>::from(*v).unwrap())
+        .map(|v| <f64 as NumCast>::from(*v).unwrap())
         .collect();
 
     let mut mesh = MeshBuilder::new()

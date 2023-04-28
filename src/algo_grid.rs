@@ -1,46 +1,38 @@
 use alloc::collections::VecDeque;
-use sha2::{Sha256, Digest};
-use base16ct;
-
-use core::ops::SubAssign;
-use core::iter::repeat;
-
-use alloc::vec::Vec;
 use alloc::string::{String, ToString};
+use alloc::vec::Vec;
+use core::iter::repeat;
+use core::ops::SubAssign;
 
-use peroxide::numerical::eigen::EigenMethod;
-use peroxide::fuga::*;
-
-use ndarray::{Array1, Array2, Array3, Axis, ArrayView2, ArrayView1, ArrayBase};
-use ndarray::arr1;
-
-use tri_mesh::mesh::Mesh;
-
-use cgmath::MetricSpace; // impl distance2
-use cgmath::Point2;
+use base16ct;
+use cgmath::MetricSpace;
 #[allow(unused_imports)]
 use cgmath::num_traits::Float;
+use cgmath::Point2;
+use ndarray::{Array1, Array2, Array3, ArrayBase, ArrayView1, ArrayView2, Axis};
+use ndarray::arr1;
+use peroxide::fuga::*;
+use sha2::{Digest, Sha256};
+use tri_mesh::mesh::Mesh;
 
-use crate::polyline::GenPolyLines;
 use crate::contour::Rect;
+use crate::polyline::GenPolyLines;
 
-type VctrTriangles = Array3<f64>;
+type VectorTriangles = Array3<f64>;
 //type Triangle = Array3<f64>;
-// [[x0, y0, z0],[x1, y1, z1],[x3, y3, z3]]
-// [[x0, y0, z0],[x1, y1, z1],[x3, y3, z3]]
-// [[x0, y0, z0],[x1, y1, z1],[x3, y3, z3]]
+// [[x0, y0, z0], [x1, y1, z1], [x3, y3, z3]]
+// [[x0, y0, z0], [x1, y1, z1], [x3, y3, z3]]
+// [[x0, y0, z0], [x1, y1, z1], [x3, y3, z3]]
 type Vec2 = Point2<f64>;
 
 
-pub(crate) fn find_top_std(
-    cntrs: &Vec<Vec<Vec2>>, depth: usize, grid_size: i16, rect: Rect,
-) -> Vec<String> {
+pub(crate) fn find_top_std(centers: &Vec<Vec<Vec2>>, depth: usize, grid_size: i16, rect: Rect) -> Vec<String> {
     let mut hashes = vec![];
-    if cntrs.len() == 0 {
+    if centers.len() == 0 {
         return hashes;
     }
 
-    let ss = GenPolyLines::select_top(cntrs, depth, grid_size, rect);
+    let ss = GenPolyLines::select_top(centers, depth, grid_size, rect);
 
     for a in ss.iter() {
         let data: Vec<u8> = a.1.nodes.as_slice().iter()
@@ -61,16 +53,14 @@ pub(crate) fn find_top_std(
     hashes
 }
 
-pub(crate) fn find_top_std_2(
-    cntrs: &Vec<Vec<Vec2>>, depth: usize, n_sect: usize, grid_size: usize, rect: Rect,
-) -> Vec<String> {
+pub(crate) fn find_top_std_2(centers: &Vec<Vec<Vec2>>, depth: usize, n_sect: usize, grid_size: usize, rect: Rect) -> Vec<String> {
     let mut hashes = vec![];
-    if cntrs.len() == 0 {
+    if centers.len() == 0 {
         return hashes;
     }
 
     const N: usize = 2;
-    let ss = GenPolyLines::select_top_all(cntrs, depth, grid_size, rect);
+    let ss = GenPolyLines::select_top_all(centers, depth, grid_size, rect);
     if ss.len() < n_sect {
         return hashes;
     }
@@ -110,13 +100,13 @@ pub(crate) fn find_top_std_2(
         while j < n_sect {
             if stack[j] < N - 1 {
                 stack[j] += 1;
-                break
+                break;
             }
             stack[j] = 0;
             j += 1;
         }
         if j == n_sect {
-            break
+            break;
         }
     }
 
@@ -125,7 +115,7 @@ pub(crate) fn find_top_std_2(
         hasher.update(hash.1.as_slice());
 
         let mut a: Vec<u8> = repeat(0).take(32 * n_sect).collect();
-        let mut buf= a.as_mut();
+        let mut buf = a.as_mut();
         let hash = hasher.finalize();
         let hex_hash = base16ct::lower::encode_str(&hash, &mut buf).unwrap();
 
@@ -135,16 +125,14 @@ pub(crate) fn find_top_std_2(
     hashes
 }
 
-pub(crate) fn find_top_std_3(
-    cntrs: &Vec<Vec<Vec2>>, depth: usize, n_sect: usize, grid_size: usize, rect: Rect,
-) -> Vec<String> {
+pub(crate) fn find_top_std_3(centers: &Vec<Vec<Vec2>>, depth: usize, n_sect: usize, grid_size: usize, rect: Rect) -> Vec<String> {
     let mut hashes = vec![];
-    if cntrs.len() == 0 {
+    if centers.len() == 0 {
         return hashes;
     }
 
     const N: usize = 2;
-    let ss = GenPolyLines::select_top_all_3(cntrs, depth, grid_size, rect);
+    let ss = GenPolyLines::select_top_all_3(centers, depth, grid_size, rect);
     if ss.len() < n_sect {
         return hashes;
     }
@@ -153,9 +141,8 @@ pub(crate) fn find_top_std_3(
 
     let mut ff = |d: f64, hash: Vec<u8>| {
         if let Some(_) = best_totals.iter().find(|a| a.0 == d) {
-            return
-        }
-        else {
+            return;
+        } else {
             if best_totals.len() == depth {
                 let m = best_totals.iter()
                     .enumerate()
@@ -191,13 +178,13 @@ pub(crate) fn find_top_std_3(
         while j < n_sect {
             if stack[j] < N - 1 {
                 stack[j] += 1;
-                break
+                break;
             }
             stack[j] = 0;
             j += 1;
         }
         if j == n_sect {
-            break
+            break;
         }
     }
 
@@ -207,7 +194,7 @@ pub(crate) fn find_top_std_3(
         hasher.update(hash.1.as_slice());
 
         let mut a: Vec<u8> = repeat(0).take(32 * n_sect).collect();
-        let mut buf= a.as_mut();
+        let mut buf = a.as_mut();
         let hash = hasher.finalize();
         let hex_hash = base16ct::lower::encode_str(&hash, &mut buf).unwrap();
 
@@ -217,7 +204,7 @@ pub(crate) fn find_top_std_3(
     hashes
 }
 
-fn cross(triangles: &VctrTriangles) -> Array2<f64> {
+fn cross(triangles: &VectorTriangles) -> Array2<f64> {
     let dims = triangles.dim();
     let mut d = Array3::zeros((dims.0, 2, dims.1));
 
@@ -230,16 +217,16 @@ fn cross(triangles: &VctrTriangles) -> Array2<f64> {
 
     let mut cr = Array2::zeros((dims.0, dims.1));
     for (i, m) in d.axis_iter(Axis(0)).enumerate() {
-            let a: ArrayView1<f64> = m.slice(s![0, ..]);
-            let b: ArrayView1<f64> = m.slice(s![1, ..]);
-            cr[[i, 0]] = a[1]*b[2] - a[2]*b[1];
-            cr[[i, 1]] = a[2]*b[0] - a[0]*b[2];
-            cr[[i, 2]] = a[0]*b[1] - a[1]*b[0];
+        let a: ArrayView1<f64> = m.slice(s![0, ..]);
+        let b: ArrayView1<f64> = m.slice(s![1, ..]);
+        cr[[i, 0]] = a[1] * b[2] - a[2] * b[1];
+        cr[[i, 1]] = a[2] * b[0] - a[0] * b[2];
+        cr[[i, 2]] = a[0] * b[1] - a[1] * b[0];
     }
     cr
 }
 
-pub fn mass_properties(triangles: VctrTriangles) -> (Array1<f64>, Array2<f64>) {
+pub fn mass_properties(triangles: VectorTriangles) -> (Array1<f64>, Array2<f64>) {
     let p0: ArrayView2<f64> = triangles.slice(s![0.., 0, 0..]);
     let p1: ArrayView2<f64> = triangles.slice(s![0.., 1, 0..]);
     let p2: ArrayView2<f64> = triangles.slice(s![0.., 2, 0..]);
@@ -280,7 +267,7 @@ pub fn mass_properties(triangles: VctrTriangles) -> (Array1<f64>, Array2<f64>) {
         let triangle_i = (i + 1) % 3;
         integral.slice_mut(s![i+7, ..]).assign(
             &(&crosses.slice(s![.., i]) * &(
-                    &triangles.slice(s![.., 0, triangle_i]) * &g0.slice(s![.., i]) +
+                &triangles.slice(s![.., 0, triangle_i]) * &g0.slice(s![.., i]) +
                     &triangles.slice(s![.., 0, triangle_i]) * &g1.slice(s![.., i]) +
                     &triangles.slice(s![.., 0, triangle_i]) * &g2.slice(s![.., i]))
             )
@@ -292,13 +279,12 @@ pub fn mass_properties(triangles: VctrTriangles) -> (Array1<f64>, Array2<f64>) {
     // println!("{}, {}, {}", integral[[9, 0]], integral[[9,1]], integral[[9,2]]);
 
 
-    let coefficients: Array1<f64> =  arr1(&[1./6., 1./24., 1./24., 1./24., 1./60., 1./60., 1./60., 1./120., 1./120., 1./120.]);
+    let coefficients: Array1<f64> = arr1(&[1. / 6., 1. / 24., 1. / 24., 1. / 24., 1. / 60., 1. / 60., 1. / 60., 1. / 120., 1. / 120., 1. / 120.]);
     let integrated: Array1<f64> = integral.sum_axis(Axis(1)) * coefficients;
     let volume = integrated[0];
     let center_mass: Array1<f64> = if volume.abs() < 1e-10 {
         arr1(&[0., 0., 0.])
-    }
-    else {
+    } else {
         let a = &integrated.slice(s![1..4]);
         a / volume
     };
@@ -336,24 +322,22 @@ pub fn mass_properties(triangles: VctrTriangles) -> (Array1<f64>, Array2<f64>) {
 
 
 fn principal_axis(inertia: Array2<f64>) -> (Array1<f64>, Array2<f64>) {
-    let negate_nondiagonal: Array2<f64> = &(Array2::eye(3) * 2.0) - 1.0;
-    let a: Array2<f64> = inertia * negate_nondiagonal;
+    let negate_non_diagonal: Array2<f64> = &(Array2::eye(3) * 2.0) - 1.0;
+    let a: Array2<f64> = inertia * negate_non_diagonal;
 
-    // let m = matrix(vec![a.as_slice().unwrap()], 3, 3, Row);
-    // let r: Vec<f64> = a.as_slice().unwrap().to_vec();
     let m = matrix(a.as_slice().unwrap().to_vec(), 3, 3, Row);
-    let e = eigen(&m, EigenMethod::Jacobi);
+    let e = eigen(&m, Jacobi);
     let (c, v) = e.extract();
 
-    let components =arr1(c.as_slice());
+    let components = arr1(c.as_slice());
     let vectors: Array2<f64> = ArrayBase::from_shape_vec((3, 3), v.data).unwrap();
 
-    // eigh returns them as column vectors, change them to row vectors
+    // eigen returns them as column vectors, change them to row vectors
     (components, vectors.reversed_axes())
 }
 
 #[allow(dead_code)]
-fn transform_arround(matrix: Array2<f64>, point: &Array1<f64>) -> Array2<f64> {
+fn transform_around(matrix: Array2<f64>, point: &Array1<f64>) -> Array2<f64> {
     let mut translate: Array2<f64> = Array2::eye(4);
     translate.slice_mut(s![..3, ..3]).sub_assign(point);
 
@@ -361,27 +345,20 @@ fn transform_arround(matrix: Array2<f64>, point: &Array1<f64>) -> Array2<f64> {
     translate.slice_mut(s![..3, 3]).assign(point);
     result = translate.dot(&result);
 
-    return result
-
+    return result;
 }
 
-pub fn principal_inertia_transform(triangles: VctrTriangles) -> Array2<f64>{
+pub fn principal_inertia_transform(triangles: VectorTriangles) -> Array2<f64> {
     let (center_mass, inertia) = mass_properties(triangles);
     let (_components, vectors) = principal_axis(inertia);
-
-    // println!("center_mass: {}", center_mass);
-    // println!("vectors: {:?}", vectors);
-    // println!("_components: {:?}", _components);
-
-    let vcts = vectors;
 
     // TODO: Reorder vectors by components
     let mut transform = Array2::eye(4);
 
     // TODO:
-    transform.slice_mut(s![..3, ..3]).assign(&vcts);
+    transform.slice_mut(s![..3, ..3]).assign(&vectors);
 
-    // let mut tr = transform_arround(transform, &center_mass);
+    // let mut tr = transform_around(transform, &center_mass);
     transform.slice_mut(s![..3, 3]).sub_assign(&center_mass);
 
     transform
@@ -395,7 +372,7 @@ pub fn get_contour(mesh: &Mesh, z_sect: f64) -> Vec<Point2<f64>> {
     for vertex_id in mesh.vertex_iter() {
         let p = mesh.vertex_position(vertex_id);
         if (p.z - z_sect).abs() < 0.15 {
-            sect.push(Vec2{x: p.x, y: p.y});
+            sect.push(Vec2 { x: p.x, y: p.y });
         }
     }
 
@@ -419,15 +396,15 @@ pub fn get_contour(mesh: &Mesh, z_sect: f64) -> Vec<Point2<f64>> {
     }
 
     let mut ii: Vec<usize> = (0..len).collect();
-    for i in 0..len-1 {
-        let v = &mt[ ii[ i ] ];
-        let j = (i+1..len).min_by_key(|&k| (v[ ii[ k ] ] * 10000.0) as u32).unwrap();
+    for i in 0..len - 1 {
+        let v = &mt[ii[i]];
+        let j = (i + 1..len).min_by_key(|&k| (v[ii[k]] * 10000.0) as u32).unwrap();
         ii.swap(i + 1, j);
     }
 
     let mut cntr: Vec<Point2<f64>> = sect
         .iter().enumerate()
-        .map(|(i, &_a)| sect[ ii[ i ] ])
+        .map(|(i, &_a)| sect[ii[i]])
         .collect();
 
     cntr.push(cntr.as_slice()[0]);
@@ -444,7 +421,7 @@ pub fn get_contour(mesh: &Mesh, z_sect: f64) -> Vec<Point2<f64>> {
     for n in 0..nn {
         let k = (pn.y - p0.y) / (pn.x - p0.x);
 
-        let p = Point2{x: p0.x + (n as f64)  * d2, y: p0.y + (n as f64) * d2 * k};
+        let p = Point2 { x: p0.x + (n as f64) * d2, y: p0.y + (n as f64) * d2 * k };
         cntr.push(p);
     }
 

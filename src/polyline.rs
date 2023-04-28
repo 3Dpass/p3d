@@ -1,14 +1,14 @@
-use alloc::vec::Vec;
-use alloc::vec::IntoIter;
 use alloc::collections::vec_deque::VecDeque;
+use alloc::vec::IntoIter;
+use alloc::vec::Vec;
 
-use sha2::{Sha256, Digest};
-
-use crate::contour::{CellSet, Cntr, Rect};
 use cgmath::MetricSpace;
-use cgmath::Point2;
 #[allow(unused_imports)]
 use cgmath::num_traits::Float;
+use cgmath::Point2;
+use sha2::{Digest, Sha256};
+
+use crate::contour::{CellSet, Cntr, Rect};
 
 pub(crate) const DISTANCE: i32 = 2;
 
@@ -23,7 +23,6 @@ pub(crate) struct PolyLine {
 impl<'a> PolyLine {
     pub(crate) fn new(pts: Vec<Point2<i32>>, grid_size: i16) -> Self {
         Self {
-            //nodes: Vec::with_capacity(100),
             nodes: pts,
             grid_size,
         }
@@ -82,17 +81,16 @@ impl<'a> PolyLine {
             let (dx, dy): (f64, f64) =
                 if (s2.0.x - s1.0.x).abs() > 1.0e-10 {
                     let kk = (s2.0.y - s1.0.y) / (s2.0.x - s1.0.x);
-                    let dx = dd / (1.0 + kk*kk).sqrt();
+                    let dx = dd / (1.0 + kk * kk).sqrt();
                     let dy = kk * dx;
                     (dx, dy)
-                }
-                else {
+                } else {
                     let dx = 0.0;
                     let dy = dd;
                     (dx, dy)
                 };
 
-            res.push(Point2 {x: p.x + dx, y: p.y + dy} );
+            res.push(Point2 { x: p.x + dx, y: p.y + dy });
         }
         res
     }
@@ -107,16 +105,8 @@ impl<'a> PolyLine {
         hasher.update(data.as_slice());
 
         let hash = hasher.finalize();
-        // hash.to_vec()
         hash.to_vec()
     }
-
-    // pub(crate) fn calc_hash_hex(&self) -> String {
-    //     let hash = self.calc_hash();
-    //     let mut buf = [0u8; 64];
-    //     let hex_hash = base16ct::lower::encode_str(&hash, &mut buf).unwrap();
-    //     hex_hash.to_string()
-    // }
 }
 
 
@@ -144,14 +134,11 @@ impl GenPolyLines {
         s / (v1.points.len() as f64)
     }
 
-    pub (crate) fn select_top(
-        cntrs: &Vec<Vec<Vec2>>, n: usize, grid_size: i16, rect: Rect,
-    ) -> Vec<(f64, PolyLine)> {
-
+    pub(crate) fn select_top(counters: &Vec<Vec<Vec2>>, n: usize, grid_size: i16, rect: Rect) -> Vec<(f64, PolyLine)> {
         let mut top_heap: VecDeque<(f64, PolyLine)> = VecDeque::with_capacity(n);
-        // TODO: select strt point from self.cells
+        // TODO: select start point from self.cells
 
-        for cntr in cntrs.iter() {
+        for cntr in counters.iter() {
             let cn = Cntr::new(Some(cntr.to_vec()), grid_size, &rect);
             let zone = cn.line_zone();
 
@@ -186,13 +173,10 @@ impl GenPolyLines {
         v
     }
 
-    pub (crate) fn select_top_all(
-        cntrs: &Vec<Vec<Vec2>>, n: usize, grid_size: usize, rect: Rect,
-    ) -> Vec<Vec<(f64, Vec<u8>)>> {
-
+    pub(crate) fn select_top_all(counters: &Vec<Vec<Vec2>>, n: usize, grid_size: usize, rect: Rect) -> Vec<Vec<(f64, Vec<u8>)>> {
         let mut top_heap: Vec<Vec<(f64, Vec<u8>)>> = Vec::with_capacity(grid_size as usize);
 
-        for cntr in cntrs.iter() {
+        for cntr in counters.iter() {
             let mut top_in_cntr: VecDeque<(f64, PolyLine)> = VecDeque::with_capacity(n);
 
             let cn = Cntr::new(Some(cntr.to_vec()), grid_size as i16, &rect);
@@ -229,13 +213,10 @@ impl GenPolyLines {
         top_heap
     }
 
-    pub (crate) fn select_top_all_3(
-        cntrs: &Vec<Vec<Vec2>>, depth: usize, grid_size: usize, rect: Rect,
-    ) -> Vec<Vec<(f64, Vec<u8>)>> {
-
+    pub(crate) fn select_top_all_3(counters: &Vec<Vec<Vec2>>, depth: usize, grid_size: usize, rect: Rect) -> Vec<Vec<(f64, Vec<u8>)>> {
         let mut top_heap: Vec<Vec<(f64, Vec<u8>)>> = Vec::with_capacity(grid_size as usize);
 
-        for cntr in cntrs.iter() {
+        for cntr in counters.iter() {
             let mut top_in_cntr: Vec<(f64, PolyLine)> = Vec::with_capacity(depth);
             let cn = Cntr::new(Some(cntr.to_vec()), grid_size as i16, &rect);
             let zone = cn.line_zone();
@@ -254,9 +235,8 @@ impl GenPolyLines {
                 let d = calc_sco(pl);
 
                 if let Some(_) = top_in_cntr.iter().find(|a| a.0 == d) {
-                    return
-                }
-                else {
+                    return;
+                } else {
                     if top_in_cntr.len() == depth {
                         let m = top_in_cntr.iter()
                             .enumerate()
@@ -279,32 +259,15 @@ impl GenPolyLines {
         top_heap
     }
 
-    fn complete_line<F>(&mut self, f: &mut F)
-        where
-            F: FnMut(&PolyLine) {
-
+    fn complete_line<F>(&mut self, f: &mut F) where F: FnMut(&PolyLine) {
         self.lev += 1;
-        // println!("Enter {} with line_buf: {:?}", self.lev, self.line_buf.nodes);
+
         let start_point = self.line_buf.nodes.last().unwrap().clone();
         let first_point = self.line_buf.nodes.first().unwrap().clone();
-        let neib_nodes = NeiborNodes::new(&self.cells, &self.line_buf, start_point, self.line_buf.grid_size);
+        let neighbour_nodes = NeighbourNodes::new(&self.cells, &self.line_buf, start_point, self.line_buf.grid_size);
 
-        // debug
-        // let last = self.line_buf.nodes.last().unwrap();
-        // println!("point: {:?}, neibs: {:?}", last, neib_nodes.neibs);
-        // for (i, v1) in neib_nodes.neibs.iter().enumerate() {
-        //     for (j, v2) in neib_nodes.neibs.iter().enumerate() {
-        //         if j > i && v1 == v2 {
-        //
-        //             println!("Start point: {:?}", start_point); // self.line_buf.nodes);
-        //             println!("Doubled neibs: {:?}", neib_nodes.neibs); // self.line_buf.nodes);
-        //         }
-        //     }
-        // }
-
-        for p in neib_nodes.into_iter() {
+        for p in neighbour_nodes.into_iter() {
             if p == first_point {
-                // println!("line_buf: {:?}", self.line_buf.nodes);
                 self.line_buf.nodes.push(p);
                 (*f)(&self.line_buf);
                 self.line_buf.nodes.pop();
@@ -322,48 +285,43 @@ impl GenPolyLines {
 
 #[allow(dead_code)]
 #[derive(Clone)]
-struct NeiborNodes {
-    pub(crate) neibs: Vec<Point2<i32>>,
+struct NeighbourNodes {
+    pub(crate) neighbours: Vec<Point2<i32>>,
     grid_size: i16,
 }
 
-impl NeiborNodes {
-    fn new(permited_points: &CellSet, line: &PolyLine, start_point: Point2<i32>, grid_size: i16) -> Self {
-        // println!("permitted_points: {:?}", permited_points);
+impl NeighbourNodes {
+    fn new(permitted_points: &CellSet, line: &PolyLine, start_point: Point2<i32>, grid_size: i16) -> Self {
         Self {
-            //cells: permited_points,
-            //cur_point: start_point,
-            neibs: Self::near_points(permited_points, line, start_point, DISTANCE, grid_size),
-            grid_size: grid_size,
+            neighbours: Self::near_points(permitted_points, line, start_point, DISTANCE, grid_size),
+            grid_size,
         }
     }
 
     fn near_points(z: &CellSet, line: &PolyLine, start_point: Point2<i32>, dist: i32, grid_size: i16) -> Vec<Point2<i32>> {
-        let gsize = grid_size as i32;
+        let grid_size_i32 = grid_size as i32;
         let chk_zone = |i: i32, j: i32, z: &CellSet, line: &PolyLine| -> bool {
-            if i < 0 || i >= gsize || j < 0 || j >= gsize {
+            if i < 0 || i >= grid_size_i32 || j < 0 || j >= grid_size_i32 {
                 return false;
             }
 
             let first = line.nodes.first().unwrap().clone();
-            // println!("first: {:?}", first);
-            if first == (Point2{x:i, y: j}) && line.nodes.len() > 5 {
-                //println!("first: {:?}", first);
+            if first == (Point2 { x: i, y: j }) && line.nodes.len() > 5 {
                 return true;
             }
             if !z.contains(&(i, j)) {
                 return false;
             }
-            for p in line.nodes.iter() {
-                let Point2{x: pi, y: pj} = *p;
-                if (pi - i).abs() < dist as i32 && (pj - j).abs() < dist as i32{
-                    return false
+
+            for Point2 { x: pi, y: pj } in line.nodes.iter() {
+                if (pi - i).abs() < dist as i32 && (pj - j).abs() < dist as i32 {
+                    return false;
                 }
             }
             true
         };
 
-        let Point2{x:i0, y:j0} = start_point;
+        let Point2 { x: i0, y: j0 } = start_point;
         let mut v: Vec<Point2<i32>> = Vec::with_capacity(((grid_size - 1) * 4) as usize);
 
         let min_i = i0 - dist;
@@ -378,7 +336,7 @@ impl NeiborNodes {
             }
         }
 
-        for j in min_j..=max_j{
+        for j in min_j..=max_j {
             let i = max_i;
             if chk_zone(i, j, z, line) {
                 v.push(Point2::new(i, j));
@@ -403,23 +361,23 @@ impl NeiborNodes {
     }
 }
 
-impl IntoIterator for NeiborNodes {
+impl IntoIterator for NeighbourNodes {
     type Item = Point2<i32>;
-    type IntoIter = NeiborNodesIter;
+    type IntoIter = NeighbourNodesIter;
 
     // note that into_iter() is consuming self
     fn into_iter(self) -> Self::IntoIter {
         Self::IntoIter {
-            iter: self.neibs.into_iter(),
+            iter: self.neighbours.into_iter(),
         }
     }
 }
 
-struct NeiborNodesIter {
+struct NeighbourNodesIter {
     iter: IntoIter<Point2<i32>>,
 }
 
-impl<'a> Iterator for NeiborNodesIter {
+impl<'a> Iterator for NeighbourNodesIter {
     type Item = Point2<i32>;
 
     fn next(&mut self) -> Option<Self::Item> {
