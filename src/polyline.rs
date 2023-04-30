@@ -125,12 +125,20 @@ impl GenPolyLines {
         }
     }
 
+    // Function to calculate the squared centroid distance between two sets of points
     fn sco2(v1: &Cntr, v2: &Cntr) -> f64 {
+        // Initialize squared sum as a floating point number
         let mut s = 0f64;
 
+        // Iterate through the corresponding pairs of points in both input vectors
         for (a1, a2) in v1.points.iter().zip(v2.points.iter()) {
-            s += (a2.x - a1.x) * (a2.x - a1.x) + (a2.y - a1.y) * (a2.y - a1.y)
+            // Calculate the squared Euclidean distance between current pair of points
+            // and add it to the cumulative squared sum
+            s += (a2.x - a1.x) * (a2.x - a1.x) + (a2.y - a1.y) * (a2.y - a1.y);
         }
+
+        // Return the mean squared distance by dividing the cumulative squared sum
+        // by the number of points
         s / (v1.points.len() as f64)
     }
 
@@ -275,25 +283,35 @@ impl GenPolyLines {
         top_heap
     }
 
+    // This function recursively explores and completes a polyline
+    // using the provided closure or function `F` to process each completed polyline.
     fn complete_line<F>(&mut self, f: &mut F) where F: FnMut(&PolyLine) {
+        // Increment the recursion level counter
         self.lev += 1;
 
+        // Store the last point in the polyline as the starting point
         let start_point = self.line_buf.nodes.last().unwrap().clone();
+        // Store the first point in the polyline
         let first_point = self.line_buf.nodes.first().unwrap().clone();
+        // Find neighboring nodes that can be connected to the starting point
         let neighbour_nodes = NeighbourNodes::new(&self.cells, &self.line_buf, start_point, self.line_buf.grid_size);
 
+        // Iterate over neighbor nodes
         for p in neighbour_nodes.into_iter() {
+            // If the current neighbor node is the first point, complete the polyline
             if p == first_point {
                 self.line_buf.nodes.push(p);
-                (*f)(&self.line_buf);
+                (*f)(&self.line_buf); // Process the completed polyline with the closure or function `F`
                 self.line_buf.nodes.pop();
                 continue;
             }
 
+            // Add the current neighbor node to the polyline and then recursively call `complete_line` to explore further.
             self.line_buf.nodes.push(p);
             self.complete_line(f);
-            self.line_buf.nodes.pop();
+            self.line_buf.nodes.pop(); // Remove the added node after exploration is done
         }
+        // Decrement the recursion level counter
         self.lev -= 1;
     }
 }
