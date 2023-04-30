@@ -173,25 +173,36 @@ impl GenPolyLines {
         v
     }
 
+    // This function selects the top n ranked PolyLines for each contour in a given grid.
+    // The ranking is based on the score calculated by the `GenPolyLines::sco2` method.
     pub(crate) fn select_top_all(counters: &Vec<Vec<Vec2>>, n: usize, grid_size: usize, rect: Rect) -> Vec<Vec<(f64, Vec<u8>)>> {
+        // Initialize a 2D Vector to store the top n PolyLines for each contour.
         let mut top_heap: Vec<Vec<(f64, Vec<u8>)>> = Vec::with_capacity(grid_size as usize);
 
+        // Iterate through each contour.
         for cntr in counters.iter() {
+            // Create a Deque to store the top n PolyLines within the current contour.
             let mut top_in_cntr: VecDeque<(f64, PolyLine)> = VecDeque::with_capacity(n);
 
+            // Create Cntr and Zone objects needed for the calculations.
             let cn = Cntr::new(Some(cntr.to_vec()), grid_size as i16, &rect);
             let zone = cn.line_zone();
 
+            // Initialize a new GenPolyLines object with the given zone.
             let mut gen_lines = GenPolyLines::new(zone, grid_size as i16);
             let start_point = Point2 { x: 0, y: 0 };
             gen_lines.line_buf.nodes.push(start_point);
 
+            // Calculate the size of the current contour.
             let cntr_size = cn.points.len();
+
+            // Closure to calculate the score for a given PolyLine using `GenPolyLines::sco2`.
             let calc_sco = |pl: &PolyLine|
                 GenPolyLines::sco2(
                     &cn, &pl.line2points(cntr_size, &rect),
                 );
 
+            // Closure to update the top n PolyLines deque for the current contour.
             let mut ff = |pl: &PolyLine| {
                 let d = calc_sco(pl);
                 let len = top_in_cntr.len();
@@ -207,7 +218,12 @@ impl GenPolyLines {
                     top_in_cntr.push_back((d, pl.clone()));
                 }
             };
+
+            // Generate and rank PolyLines for the current contour using the `ff` closure.
             gen_lines.complete_line(&mut ff);
+
+            // Add the ranked PolyLines for the current contour to the 2D Vector.
+            // Use calc_hash() to map the PolyLine to a Vec<u8> for storage.
             top_heap.push(top_in_cntr.into_iter().map(|a| (a.0, a.1.calc_hash().to_vec())).collect());
         }
         top_heap
