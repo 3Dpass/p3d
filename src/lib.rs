@@ -124,7 +124,8 @@ pub fn p3d_process_n(input: &[u8], algo: AlgoType, depth: usize, par1: i16, par2
     let step = (v_max.z - v_min.z) / (1.0f64 + n_sections as f64);
     for n in 0..n_sections {
         let z_sect = v_min.z + (n as f64 + 1.0f64) * step;
-        let cntr = get_contour(&mesh, z_sect);
+        let delta = if let AlgoType::Grid2dV3a = algo {  step * 0.15 } else { 0.15 };
+        let cntr = get_contour(&mesh, z_sect, delta);
         if cntr.len() > 0 {
             cntrs.push(cntr);
         }
