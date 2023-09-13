@@ -452,14 +452,14 @@ pub fn principal_inertia_transform(triangles: VectorTriangles) -> Array2<f64> {
 }
 
 
-pub fn get_contour(mesh: &Mesh, z_sect: f64) -> Vec<Point2<f64>> {
+pub fn get_contour(mesh: &Mesh, z_sect: f64, delta: f64) -> Vec<Point2<f64>> {
     // construct plane section
     let mut sect = Vec::<Vec2>::new();
 
     for vertex_id in mesh.vertex_iter() {
         let p = mesh.vertex_position(vertex_id);
-        if (p.z - z_sect).abs() < 0.15 {
-            sect.push(Vec2 { x: p.x, y: p.y });
+        if (p.z - z_sect).abs() < delta {
+            sect.push(Vec2{x: p.x, y: p.y});
         }
     }
 
