@@ -217,6 +217,93 @@ pub(crate) fn find_top_std_3(
     hashes
 }
 
+pub(crate) fn find_top_std_4(
+    cntrs: &Vec<Vec<Vec2>>, depth: usize, n_sect: usize, grid_size: usize, rect: Rect,
+) -> Vec<String> {
+    let mut hashes = vec![];
+    if cntrs.len() == 0 {
+        return hashes;
+    }
+
+    const N: usize = 2;
+    let ss = GenPolyLines::select_top_all_4(cntrs, N, grid_size, rect);
+    if ss.len() < n_sect {
+        return hashes;
+    }
+
+    let mut best_totals: Vec<(f64, Vec<u8>)> = Vec::with_capacity(depth);
+
+    let mut ff = |d: f64, hash: Vec<u8>| {
+        if let Some(_) = best_totals.iter().find(|a| a.0 == d) {
+            return
+        }
+        else {
+            if best_totals.len() == depth {
+                let m = best_totals.iter()
+                    .enumerate()
+                    .max_by(|(_, a), (_, b)|
+                        a.0.partial_cmp(&b.0).unwrap_or(core::cmp::Ordering::Equal)
+                    );
+
+                if let Some((i, r)) = m {
+                    if r.0 > d {
+                        best_totals[i] = (d, hash);
+                    }
+                }
+            } else {
+                best_totals.push((d, hash));
+            }
+        }
+    };
+
+    let mut stack: Vec<usize> = repeat(0).take(n_sect).collect();
+
+    loop {
+        let mut sco = 0.;
+        let mut h: Vec<u8> = Vec::new();
+        for l in 0..n_sect {
+            let k = stack[l];
+            if k < ss[l].len() {
+                sco += ss[l][k].0;
+                h.extend(ss[l][k].1.clone());
+            }
+        }
+        ff(sco, h);
+
+        let mut j = 0;
+        while j < n_sect {
+            if ss[j].len() == 0 {
+                j += 1;
+                continue
+            }
+            if stack[j] < N - 1 {
+                stack[j] += 1;
+                break
+            }
+            stack[j] = 0;
+            j += 1;
+        }
+        if j == n_sect {
+            break
+        }
+    }
+
+    best_totals.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+    for hash in best_totals.iter() {
+        let mut hasher = Sha256::new();
+        hasher.update(hash.1.as_slice());
+
+        let mut a: Vec<u8> = repeat(0).take(32 * n_sect).collect();
+        let mut buf= a.as_mut();
+        let hash = hasher.finalize();
+        let hex_hash = base16ct::lower::encode_str(&hash, &mut buf).unwrap();
+
+        hashes.push(hex_hash.to_string());
+    }
+    hashes.dedup();
+    hashes
+}
+
 fn cross(triangles: &VctrTriangles) -> Array2<f64> {
     let dims = triangles.dim();
     let mut d = Array3::zeros((dims.0, 2, dims.1));
