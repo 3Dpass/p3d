@@ -451,22 +451,45 @@ pub fn principal_inertia_transform(triangles: VectorTriangles) -> Array2<f64> {
     transform
 }
 
-
-pub fn get_contour(mesh: &Mesh, z_sect: f64, delta: f64) -> Vec<Point2<f64>> {
-    // construct plane section
+pub fn intersect(mesh: &Mesh, z_sect: f64) -> Vec::<Vec2> {
     let mut sect = Vec::<Vec2>::new();
 
     for vertex_id in mesh.vertex_iter() {
         let p = mesh.vertex_position(vertex_id);
-        if (p.z - z_sect).abs() < delta {
+        if (p.z - z_sect).abs() < 0.15 {
             sect.push(Vec2{x: p.x, y: p.y});
         }
     }
+    sect
+}
 
-    if sect.len() == 0 {
-        return Vec::new();
+pub fn intersect_2(mesh: &Mesh, z_sect: f64, delta: f64) -> Vec::<Vec2> {
+    let mut sect = Vec::<Vec2>::new();
+
+    for edge_id in mesh.edge_iter() {
+        let (p1, p2) = mesh.edge_positions(edge_id);
+        if p2.z >= z_sect && p1.z <= z_sect || p2.z <= z_sect && p1.z >= z_sect {
+            let (x, y);
+            let z1 = z_sect - p1.z;
+            let z2 = p2.z - z_sect;
+            if z1.abs() < delta {
+                (x, y) = (p1.x, p1.y);
+            }
+            else if z2.abs() < delta {
+                (x, y) = (p2.x, p2.y);
+            }
+            else {
+                let k = z2 / z1;
+                x = (p2.x + k * p1.x) / (k + 1.0);
+                y = (p2.y + k * p1.y) / (k + 1.0);
+            }
+            sect.push(Vec2{x, y});
+        }
     }
+    sect
+}
 
+pub fn get_contour(sect: Vec<Vec2>) -> Vec<Point2<f64>> {
     let len = sect.len();
     let mut mt: Vec<Vec<f32>> = Vec::with_capacity(len);
     let mut v: Vec<f32> = Vec::with_capacity(len);
