@@ -8,9 +8,12 @@ extern crate ndarray;
 use alloc::string::String;
 use alloc::vec::Vec;
 
+use obj::{load_obj, Obj, Vertex, ObjError};
+use tri_mesh::prelude::*;
 use cgmath::Point2;
 use ndarray::arr2;
 use ndarray::Array3;
+use tri_mesh::mesh_builder::Error as MeshError;
 use crate::algo_grid::{get_contour, intersect, intersect_2};
 use crate::contour::Rect;
 
@@ -36,7 +39,11 @@ pub enum AlgoType {
 }
 
 #[derive(Debug)]
-pub struct P3DError {}
+pub enum P3DError {
+    InvalidObject(ObjError),
+    MeshError(MeshError),
+    MathError,
+}
 
 
 pub fn p3d_process(input: &[u8], algo: AlgoType, par1: i16, par2: i16, trans: Option<[u8;4]>) -> Result<Vec<String>, P3DError> {
@@ -49,7 +56,7 @@ pub fn p3d_process_n(input: &[u8], algo: AlgoType, depth: usize, par1: i16, par2
     let grid_size: i16 = par1;
     let n_sections: i16 = par2;
 
-    let model: Obj<Vertex, u32> = load_obj(input).unwrap();
+    let model: Obj<Vertex, u32> = load_obj(input).map_err(|e| P3DError::InvalidObject(e))?;
 
     let vertices = model.vertices
         .iter()
@@ -60,7 +67,8 @@ pub fn p3d_process_n(input: &[u8], algo: AlgoType, depth: usize, par1: i16, par2
     let mut mesh = MeshBuilder::new()
         .with_indices(model.indices)
         .with_positions(vertices)
-        .build().unwrap();
+        .build()
+        .map_err(|e| P3DError::MeshError(e))?;
 
     let mut triangles: Array3<f64> = Array3::zeros((mesh.no_faces(), 3, 3));
 
@@ -87,7 +95,7 @@ pub fn p3d_process_n(input: &[u8], algo: AlgoType, depth: usize, par1: i16, par2
         pit[[2, 0]], pit[[2, 1]], pit[[2, 2]],
     );
 
-    let b = a.invert().unwrap();
+    let b = a.invert().ok_or(P3DError::MathError)?;
 
     let tr: Matrix4<f64> = Matrix4::new(
         b.x[0], b.x[1], b.x[2], 0.0,
