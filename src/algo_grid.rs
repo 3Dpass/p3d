@@ -491,6 +491,10 @@ pub fn intersect_2(mesh: &Mesh, z_sect: f64, delta: f64) -> Vec::<Vec2> {
 
 pub fn get_contour(sect: Vec<Vec2>) -> Vec<Point2<f64>> {
     let len = sect.len();
+    if len == 0 {
+        return Vec::new();
+    }
+
     let mut mt: Vec<Vec<f32>> = Vec::with_capacity(len);
     let mut v: Vec<f32> = Vec::with_capacity(len);
     v.resize(len, 0f32);
