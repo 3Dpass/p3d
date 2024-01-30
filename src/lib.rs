@@ -109,16 +109,17 @@ pub fn p3d_process_n(input: &[u8], algo: AlgoType, depth: usize, par1: i16, par2
     mesh.translate(shift);
     mesh.apply_transformation(tr);
 
+    let k = 45.0 / 256.0;
     if let Some(rot) = trans {
         let axis_normalized = Vector3::new(
-            rot[0] as f64 * 45.0 / 256.0,
-            rot[1] as f64 * 45.0 / 256.0,
-            rot[2] as f64 * 45.0 / 256.0,
+            rot[0] as f64 * k,
+            rot[1] as f64 * k,
+            rot[2] as f64 * k,
         ).normalize();
         mesh.apply_transformation(
             Mat4::from_axis_angle(
                 axis_normalized,
-                Deg(rot[3] as f64 * 360.0 / 256.0),
+                Deg(rot[3] as f64 * k * 360.0 / 256.0),
             )
         );
     }
