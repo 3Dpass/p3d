@@ -8,7 +8,7 @@ use cgmath::num_traits::Float;
 use cgmath::Point2;
 use sha2::{Digest, Sha256};
 
-use crate::contour::{CellSet, Cntr, Rect};
+use super::contour::{CellSet, Cntr, Rect};
 
 pub(crate) const DISTANCE: i32 = 2;
 

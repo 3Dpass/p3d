@@ -9,14 +9,14 @@ use cgmath::MetricSpace;
 #[allow(unused_imports)]
 use cgmath::num_traits::Float;
 use cgmath::Point2;
-use ndarray::{Array1, Array2, Array3, ArrayBase, ArrayView1, ArrayView2, Axis};
+use ndarray::{s, Array1, Array2, Array3, ArrayBase, ArrayView1, ArrayView2, Axis};
 use ndarray::arr1;
 use peroxide::fuga::*;
 use sha2::{Digest, Sha256};
 use tri_mesh::mesh::Mesh;
 
-use crate::contour::Rect;
-use crate::polyline::GenPolyLines;
+use super::contour::Rect;
+use super::polyline::GenPolyLines;
 
 type VectorTriangles = Array3<f64>;
 //type Triangle = Array3<f64>;
@@ -25,7 +25,7 @@ type VectorTriangles = Array3<f64>;
 // [[x0, y0, z0], [x1, y1, z1], [x3, y3, z3]]
 type Vec2 = Point2<f64>;
 
-
+#[allow(dead_code)]
 pub(crate) fn find_top_std(centers: &Vec<Vec<Vec2>>, depth: usize, grid_size: i16, rect: Rect) -> Vec<String> {
     let mut hashes = vec![];
     if centers.len() == 0 {
