@@ -363,10 +363,8 @@ impl GenPolyLines {
 
             gen_lines.line_buf.nodes.push(start_point);
 
-            let calc_sco = |pl: &PolyLine| pl.line2points_sco(&cn);
-
             let mut ff = |pl: &PolyLine| {
-                let d = calc_sco(pl);
+                let d = pl.line2points_sco(&cn);
 
                 if let Some(_) = top_in_cntr.iter().find(|a| a.0 == d) {
                     return
