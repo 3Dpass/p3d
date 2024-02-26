@@ -95,6 +95,71 @@ impl<'a> PolyLine {
         res
     }
 
+    fn line2points_sco(
+        &self,
+        v1: &Cntr
+    ) -> f64 {
+        let mut l: f64 = 0.0;
+
+        let n: usize = v1.points.len();
+        let nodes_len = self.nodes.len();
+        
+        let p1 = Point2::new(self.nodes[0].x as f64 + 0.5, self.nodes[0].y as f64 + 0.5);
+        let mut ll: Vec<(Point2<f64>, f64)> = Vec::with_capacity(nodes_len);
+        
+        ll.push((p1, 0.0));
+
+        for i in 1..nodes_len {
+            let v = &self.nodes[i];            
+            let p = Point2::new(v.x as f64 + 0.5, v.y as f64 + 0.5);            
+            l = l + ll[i-1].0.distance2(p);
+            ll.push((p, l));
+        }
+
+        let dl = l / n as f64;
+        let mut m = 0;
+        let mut p = &ll[0].0;
+
+        let a1 = &v1.points[0];
+        let a2 = &ll[0].0;
+        let mut s = (a2.x - a1.x) * (a2.x - a1.x) + (a2.y - a1.y) * (a2.y - a1.y);
+        
+        for k in 1..n {
+            let r: f64 = (k as f64) * dl;
+            while m < nodes_len {
+                let l = ll[m].1;
+                if r < l {
+                    // cur_path = r;
+                    break;
+                }
+                p = &ll[m].0;
+                m += 1;
+            }
+
+            let s1 = &ll[m - 1];
+            let s2 = &ll[m];
+
+            let dd = r - s1.1;
+
+            let dfx = s2.0.x - s1.0.x;
+            let a2: Point2<f64> =
+                if dfx > 1.0e-10 || dfx < -1.0e-10 {
+                    let kk = (s2.0.y - s1.0.y) / (s2.0.x - s1.0.x);
+                    let dx = dd / (1.0 + kk * kk).sqrt();
+                    let dy = kk * dx;
+                    Point2 { x: p.x + dx, y: p.y + dy }
+                } else {
+                    Point2 { x: p.x, y: p.y + dd }
+                };
+
+            let a1 = &v1.points[k as usize];
+
+            s += (a2.x - a1.x) * (a2.x - a1.x) + (a2.y - a1.y) * (a2.y - a1.y);
+        }
+        
+        s / (n as f64)
+    }  
+
     pub(crate) fn calc_hash(&self) -> Vec<u8> {
         let data: Vec<u8> = self.nodes.as_slice().iter()
             .flat_map(|&p| [p.x.to_be_bytes(), p.y.to_be_bytes()])
@@ -298,11 +363,7 @@ impl GenPolyLines {
 
             gen_lines.line_buf.nodes.push(start_point);
 
-            let cntr_size = cn.points.len();
-            let calc_sco = |pl: &PolyLine|
-                GenPolyLines::sco2(
-                    &cn, &pl.line2points(cntr_size, &rect),
-                );
+            let calc_sco = |pl: &PolyLine| pl.line2points_sco(&cn);
 
             let mut ff = |pl: &PolyLine| {
                 let d = calc_sco(pl);
