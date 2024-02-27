@@ -5,7 +5,7 @@
 My fun with p3d algo optimization focused on processing larger objects (but maybe also useful for mining)
 
 * main branch is baseline
-* testing branch is optimized (currently ~35% faster)
+* testing branch is optimized (currently ~40% faster)
 
 # Running tests
 
