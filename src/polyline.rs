@@ -1,5 +1,4 @@
 use alloc::collections::vec_deque::VecDeque;
-use alloc::vec::IntoIter;
 use alloc::vec::Vec;
 
 use cgmath::MetricSpace;
@@ -11,6 +10,7 @@ use sha2::{Digest, Sha256};
 use crate::contour::{CellSet, Cntr, Rect};
 
 pub(crate) const DISTANCE: i32 = 2;
+const MAX_NEAR_POINTS: usize = ((2*DISTANCE+1) * (2*DISTANCE+1)) as usize;
 
 type Vec2 = Point2<f64>;
 
@@ -404,7 +404,7 @@ impl GenPolyLines {
         // Store the first point in the polyline
         let first_point = self.line_buf.nodes.first().unwrap().clone();
         // Find neighboring nodes that can be connected to the starting point
-        let neighbour_nodes = NeighbourNodes::new(&self.cells, &self.line_buf, start_point, self.line_buf.grid_size);
+        let neighbour_nodes = GenPolyLines::near_points(&self.cells, &self.line_buf, start_point, self.line_buf.grid_size);
 
         // Iterate over neighbor nodes
         for p in neighbour_nodes.into_iter() {
@@ -424,25 +424,8 @@ impl GenPolyLines {
         // Decrement the recursion level counter
         self.lev -= 1;
     }
-}
 
-
-#[allow(dead_code)]
-#[derive(Clone)]
-struct NeighbourNodes {
-    pub(crate) neighbours: Vec<Point2<i32>>,
-    grid_size: i16,
-}
-
-impl NeighbourNodes {
-    fn new(permitted_points: &CellSet, line: &PolyLine, start_point: Point2<i32>, grid_size: i16) -> Self {
-        Self {
-            neighbours: Self::near_points(permitted_points, line, start_point, DISTANCE, grid_size),
-            grid_size,
-        }
-    }
-
-    fn near_points(z: &CellSet, line: &PolyLine, start_point: Point2<i32>, dist: i32, grid_size: i16) -> Vec<Point2<i32>> {
+    fn near_points(z: &CellSet, line: &PolyLine, start_point: Point2<i32>, grid_size: i16) -> heapless::Vec<Point2<i32>, MAX_NEAR_POINTS> {
         let grid_size_i32 = grid_size as i32;
         let chk_zone = |i: i32, j: i32, z: &CellSet, line: &PolyLine| -> bool {
             if i < 0 || i >= grid_size_i32 || j < 0 || j >= grid_size_i32 {
@@ -458,7 +441,7 @@ impl NeighbourNodes {
             }
 
             for Point2 { x: pi, y: pj } in line.nodes.iter() {
-                if (pi - i).abs() < dist as i32 && (pj - j).abs() < dist as i32 {
+                if (pi - i).abs() < DISTANCE as i32 && (pj - j).abs() < DISTANCE as i32 {
                     return false;
                 }
             }
@@ -466,65 +449,41 @@ impl NeighbourNodes {
         };
 
         let Point2 { x: i0, y: j0 } = start_point;
-        let mut v: Vec<Point2<i32>> = Vec::with_capacity(((grid_size - 1) * 4) as usize);
+        let mut v: heapless::Vec<Point2<i32>, MAX_NEAR_POINTS> = heapless::Vec::new();
 
-        let min_i = i0 - dist;
-        let min_j = j0 - dist + 1;
-        let max_i = i0 + dist;
-        let max_j = j0 + dist - 1;
+        let min_i = i0 - DISTANCE;
+        let min_j = j0 - DISTANCE + 1;
+        let max_i = i0 + DISTANCE;
+        let max_j = j0 + DISTANCE - 1;
 
         for i in min_i..=max_i {
             let j = min_j - 1;
             if chk_zone(i, j, z, line) {
-                v.push(Point2::new(i, j));
+                let _ = v.push(Point2::new(i, j));
             }
         }
 
         for j in min_j..=max_j {
             let i = max_i;
             if chk_zone(i, j, z, line) {
-                v.push(Point2::new(i, j));
+                let _ = v.push(Point2::new(i, j));
             }
         }
 
         for i in min_i..=max_i {
             let j = max_j + 1;
             if chk_zone(i, j, z, line) {
-                v.push(Point2::new(i, j));
+                let _ = v.push(Point2::new(i, j));
             }
         }
 
         for j in min_j..=max_j {
             let i = min_i;
             if chk_zone(i, j, z, line) {
-                v.push(Point2::new(i, j));
+                let _ = v.push(Point2::new(i, j));
             }
         }
 
-        v.clone()
-    }
-}
-
-impl IntoIterator for NeighbourNodes {
-    type Item = Point2<i32>;
-    type IntoIter = NeighbourNodesIter;
-
-    // note that into_iter() is consuming self
-    fn into_iter(self) -> Self::IntoIter {
-        Self::IntoIter {
-            iter: self.neighbours.into_iter(),
-        }
-    }
-}
-
-struct NeighbourNodesIter {
-    iter: IntoIter<Point2<i32>>,
-}
-
-impl<'a> Iterator for NeighbourNodesIter {
-    type Item = Point2<i32>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next()
-    }
+        v
+    }    
 }
