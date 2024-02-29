@@ -1,11 +1,32 @@
-use alloc::collections::BTreeSet as HashSet;
 use alloc::vec::Vec;
 
 #[allow(unused_imports)]
 use cgmath::num_traits::real::Real;
 use cgmath::Point2;
 
-pub(crate) type CellSet = HashSet<(i32, i32)>;
+#[derive(Debug, Clone)]
+pub(crate) struct CellSet {
+    grid_size : i32,
+    data : Vec<u8>
+}
+
+impl CellSet {
+    pub fn new (grid_size: i32) -> Self {
+        let data : Vec<u8> = vec![0; (grid_size as usize)*(grid_size as usize)];
+        Self {
+            grid_size,
+            data
+        }
+    }
+
+    pub fn insert(&mut self, p : (i32, i32)) {
+        self.data[(p.0*self.grid_size + p.1) as usize] = 1;
+    }
+
+    pub fn contains(&self, p : &(i32, i32)) -> bool {
+        self.data[(p.0*self.grid_size + p.1) as usize] == 1
+    }
+}
 
 #[derive(Debug, Clone)]
 pub(crate) struct Rect {
@@ -74,7 +95,7 @@ impl Cntr {
 
         let _len = self.points.len();
 
-        let mut z = CellSet::new();
+        let mut z = CellSet::new(n);
 
         for pp in self.points.iter() {
             let Point2 { x: px, y: py } = *pp;

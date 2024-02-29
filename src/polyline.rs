@@ -1,5 +1,4 @@
 use alloc::collections::vec_deque::VecDeque;
-use alloc::vec::IntoIter;
 use alloc::vec::Vec;
 
 use cgmath::MetricSpace;
@@ -11,8 +10,12 @@ use sha2::{Digest, Sha256};
 use crate::contour::{CellSet, Cntr, Rect};
 
 pub(crate) const DISTANCE: i32 = 2;
+const MAX_NEAR_POINTS: usize = ((2*DISTANCE+1) * (2*DISTANCE+1)) as usize;
 
 type Vec2 = Point2<f64>;
+type Neighbours = heapless::Vec<Point2<i32>, MAX_NEAR_POINTS>;
+
+const START_POINT : Point2<i32> = Point2 { x: 0, y: 0 };
 
 #[derive(Clone)]
 pub(crate) struct PolyLine {
@@ -95,6 +98,71 @@ impl<'a> PolyLine {
         res
     }
 
+    fn line2points_sco(
+        &self,
+        v1: &Cntr
+    ) -> f64 {
+        let mut l: f64 = 0.0;
+
+        let n: usize = v1.points.len();
+        let nodes_len = self.nodes.len();
+        
+        let p1 = Point2::new(self.nodes[0].x as f64 + 0.5, self.nodes[0].y as f64 + 0.5);
+        let mut ll: Vec<(Point2<f64>, f64)> = Vec::with_capacity(nodes_len);
+        
+        ll.push((p1, 0.0));
+
+        for i in 1..nodes_len {
+            let v = &self.nodes[i];            
+            let p = Point2::new(v.x as f64 + 0.5, v.y as f64 + 0.5);            
+            l = l + ll[i-1].0.distance2(p);
+            ll.push((p, l));
+        }
+
+        let dl = l / n as f64;
+        let mut m = 0;
+        let mut p = &ll[0].0;
+
+        let a1 = &v1.points[0];
+        let a2 = &ll[0].0;
+        let mut s = (a2.x - a1.x) * (a2.x - a1.x) + (a2.y - a1.y) * (a2.y - a1.y);
+        
+        for k in 1..n {
+            let r: f64 = (k as f64) * dl;
+            while m < nodes_len {
+                let l = ll[m].1;
+                if r < l {
+                    // cur_path = r;
+                    break;
+                }
+                p = &ll[m].0;
+                m += 1;
+            }
+
+            let s1 = &ll[m - 1];
+            let s2 = &ll[m];
+
+            let dd = r - s1.1;
+
+            let dfx = s2.0.x - s1.0.x;
+            let a2: Point2<f64> =
+                if dfx > 1.0e-10 || dfx < -1.0e-10 {
+                    let kk = (s2.0.y - s1.0.y) / (s2.0.x - s1.0.x);
+                    let dx = dd / (1.0 + kk * kk).sqrt();
+                    let dy = kk * dx;
+                    Point2 { x: p.x + dx, y: p.y + dy }
+                } else {
+                    Point2 { x: p.x, y: p.y + dd }
+                };
+
+            let a1 = &v1.points[k as usize];
+
+            s += (a2.x - a1.x) * (a2.x - a1.x) + (a2.y - a1.y) * (a2.y - a1.y);
+        }
+        
+        s / (n as f64)
+    }  
+
     pub(crate) fn calc_hash(&self) -> Vec<u8> {
         let data: Vec<u8> = self.nodes.as_slice().iter()
             .flat_map(|&p| [p.x.to_be_bytes(), p.y.to_be_bytes()])
@@ -114,6 +182,7 @@ pub(crate) struct GenPolyLines {
     cells: CellSet,
     line_buf: PolyLine,
     lev: i32,
+    nmap: Vec<Neighbours>
 }
 
 impl GenPolyLines {
@@ -122,6 +191,7 @@ impl GenPolyLines {
             cells: z,
             line_buf: PolyLine::new(Vec::with_capacity(100), grid_size),
             lev: 0,
+            nmap: GenPolyLines::gen_neighbours_map(grid_size as i32)
         }
     }
 
@@ -151,8 +221,8 @@ impl GenPolyLines {
             let zone = cn.line_zone();
 
             let mut gen_lines = GenPolyLines::new(zone, grid_size);
-            let start_point = Point2 { x: 0, y: 0 };
-            gen_lines.line_buf.nodes.push(start_point);
+
+            gen_lines.line_buf.nodes.push(START_POINT);
 
             let cntr_size = cn.points.len();
             let calc_sco = |pl: &PolyLine|
@@ -198,8 +268,8 @@ impl GenPolyLines {
 
             // Initialize a new GenPolyLines object with the given zone.
             let mut gen_lines = GenPolyLines::new(zone, grid_size as i16);
-            let start_point = Point2 { x: 0, y: 0 };
-            gen_lines.line_buf.nodes.push(start_point);
+
+            gen_lines.line_buf.nodes.push(START_POINT);
 
             // Calculate the size of the current contour.
             let cntr_size = cn.points.len();
@@ -245,9 +315,8 @@ impl GenPolyLines {
             let cn = Cntr::new(Some(cntr.to_vec()), grid_size as i16, &rect);
             let zone = cn.line_zone();
             let mut gen_lines = GenPolyLines::new(zone, grid_size as i16);
-            let start_point = Point2 { x: 0, y: 0 };
 
-            gen_lines.line_buf.nodes.push(start_point);
+            gen_lines.line_buf.nodes.push(START_POINT);
 
             let cntr_size = cn.points.len();
             let calc_sco = |pl: &PolyLine|
@@ -285,8 +354,7 @@ impl GenPolyLines {
 
     pub (crate) fn select_top_all_4(
         cntrs: &Vec<Vec<Vec2>>, depth: usize, grid_size: usize, rect: Rect,
-    ) -> Vec<Vec<(f64, Vec<u8>)>> {
-
+    ) -> Vec<Vec<(f64, Vec<u8>)>> {        
         let mut top_heap: Vec<Vec<(f64, Vec<u8>)>> = Vec::with_capacity(grid_size as usize);
 
         for cntr in cntrs.iter() {
@@ -294,18 +362,11 @@ impl GenPolyLines {
             let cn = Cntr::new(Some(cntr.to_vec()), grid_size as i16, &rect);
             let zone = cn.line_zone();
             let mut gen_lines = GenPolyLines::new(zone, grid_size as i16);
-            let start_point = Point2 { x: 0, y: 0 };
 
-            gen_lines.line_buf.nodes.push(start_point);
-
-            let cntr_size = cn.points.len();
-            let calc_sco = |pl: &PolyLine|
-                GenPolyLines::sco2(
-                    &cn, &pl.line2points(cntr_size, &rect),
-                );
+            gen_lines.line_buf.nodes.push(START_POINT);
 
             let mut ff = |pl: &PolyLine| {
-                let d = calc_sco(pl);
+                let d = pl.line2points_sco(&cn);
 
                 if let Some(_) = top_in_cntr.iter().find(|a| a.0 == d) {
                     return
@@ -345,7 +406,7 @@ impl GenPolyLines {
         // Store the first point in the polyline
         let first_point = self.line_buf.nodes.first().unwrap().clone();
         // Find neighboring nodes that can be connected to the starting point
-        let neighbour_nodes = NeighbourNodes::new(&self.cells, &self.line_buf, start_point, self.line_buf.grid_size);
+        let neighbour_nodes = GenPolyLines::near_points(&self.cells, &self.line_buf, start_point, self.line_buf.grid_size, &self.nmap);
 
         // Iterate over neighbor nodes
         for p in neighbour_nodes.into_iter() {
@@ -365,33 +426,12 @@ impl GenPolyLines {
         // Decrement the recursion level counter
         self.lev -= 1;
     }
-}
 
-
-#[allow(dead_code)]
-#[derive(Clone)]
-struct NeighbourNodes {
-    pub(crate) neighbours: Vec<Point2<i32>>,
-    grid_size: i16,
-}
-
-impl NeighbourNodes {
-    fn new(permitted_points: &CellSet, line: &PolyLine, start_point: Point2<i32>, grid_size: i16) -> Self {
-        Self {
-            neighbours: Self::near_points(permitted_points, line, start_point, DISTANCE, grid_size),
-            grid_size,
-        }
-    }
-
-    fn near_points(z: &CellSet, line: &PolyLine, start_point: Point2<i32>, dist: i32, grid_size: i16) -> Vec<Point2<i32>> {
+    fn near_points(z: &CellSet, line: &PolyLine, start_point: Point2<i32>, grid_size: i16, nmap : &Vec<Neighbours>) -> heapless::Vec<Point2<i32>, MAX_NEAR_POINTS> {
         let grid_size_i32 = grid_size as i32;
         let chk_zone = |i: i32, j: i32, z: &CellSet, line: &PolyLine| -> bool {
-            if i < 0 || i >= grid_size_i32 || j < 0 || j >= grid_size_i32 {
-                return false;
-            }
-
-            let first = line.nodes.first().unwrap().clone();
-            if first == (Point2 { x: i, y: j }) && line.nodes.len() > 5 {
+            
+            if START_POINT.x==i && START_POINT.y==j && line.nodes.len() > 5 {
                 return true;
             }
             if !z.contains(&(i, j)) {
@@ -399,7 +439,7 @@ impl NeighbourNodes {
             }
 
             for Point2 { x: pi, y: pj } in line.nodes.iter() {
-                if (pi - i).abs() < dist as i32 && (pj - j).abs() < dist as i32 {
+                if (pi - i).abs() < DISTANCE as i32 && (pj - j).abs() < DISTANCE as i32 {
                     return false;
                 }
             }
@@ -407,65 +447,69 @@ impl NeighbourNodes {
         };
 
         let Point2 { x: i0, y: j0 } = start_point;
-        let mut v: Vec<Point2<i32>> = Vec::with_capacity(((grid_size - 1) * 4) as usize);
+        let mut v: heapless::Vec<Point2<i32>, MAX_NEAR_POINTS> = heapless::Vec::new();
 
-        let min_i = i0 - dist;
-        let min_j = j0 - dist + 1;
-        let max_i = i0 + dist;
-        let max_j = j0 + dist - 1;
-
-        for i in min_i..=max_i {
-            let j = min_j - 1;
-            if chk_zone(i, j, z, line) {
-                v.push(Point2::new(i, j));
+        for pc in &nmap[(i0*grid_size_i32+j0) as usize] {
+            if chk_zone(pc.x, pc.y, z, line) {
+                let _ = v.push(Point2::new(pc.x, pc.y));
             }
         }
 
-        for j in min_j..=max_j {
-            let i = max_i;
-            if chk_zone(i, j, z, line) {
-                v.push(Point2::new(i, j));
-            }
-        }
 
-        for i in min_i..=max_i {
-            let j = max_j + 1;
-            if chk_zone(i, j, z, line) {
-                v.push(Point2::new(i, j));
-            }
-        }
-
-        for j in min_j..=max_j {
-            let i = min_i;
-            if chk_zone(i, j, z, line) {
-                v.push(Point2::new(i, j));
-            }
-        }
-
-        v.clone()
+        v
     }
-}
+    
+    
+    fn gen_neighbours_map(grid_size : i32) -> Vec<Neighbours> {
+        let chk_zone = |i: i32, j: i32| -> bool {
+            if i < 0 || i >= grid_size || j < 0 || j >= grid_size {
+                return false;
+            }
+            return true;
+        };        
 
-impl IntoIterator for NeighbourNodes {
-    type Item = Point2<i32>;
-    type IntoIter = NeighbourNodesIter;
+        let zero : Neighbours = Neighbours::new();
+        let mut nmap : Vec<Neighbours> = vec![zero; (grid_size*grid_size) as usize];
+        for i0 in 0..grid_size {
+            for j0 in 0..grid_size {
+                
+                let v = &mut nmap[(i0*grid_size+j0) as usize];
 
-    // note that into_iter() is consuming self
-    fn into_iter(self) -> Self::IntoIter {
-        Self::IntoIter {
-            iter: self.neighbours.into_iter(),
+                let min_i = i0 - DISTANCE;
+                let min_j = j0 - DISTANCE + 1;
+                let max_i = i0 + DISTANCE;
+                let max_j = j0 + DISTANCE - 1;
+        
+                for i in min_i..=max_i {
+                    let j = min_j - 1;
+                    if chk_zone(i, j) {
+                        let _ = v.push(Point2::new(i, j));
+                    }
+                }
+        
+                for j in min_j..=max_j {
+                    let i = max_i;
+                    if chk_zone(i, j) {
+                        let _ = v.push(Point2::new(i, j));
+                    }
+                }
+        
+                for i in min_i..=max_i {
+                    let j = max_j + 1;
+                    if chk_zone(i, j) {
+                        let _ = v.push(Point2::new(i, j));
+                    }
+                }
+        
+                for j in min_j..=max_j {
+                    let i = min_i;
+                    if chk_zone(i, j) {
+                        let _ = v.push(Point2::new(i, j));
+                    }
+                }
+            }
         }
-    }
-}
 
-struct NeighbourNodesIter {
-    iter: IntoIter<Point2<i32>>,
-}
-
-impl<'a> Iterator for NeighbourNodesIter {
-    type Item = Point2<i32>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next()
+        nmap
     }
 }
